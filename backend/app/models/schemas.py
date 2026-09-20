@@ -41,6 +41,8 @@ class PitchReviewResponse(BaseModel):
     one_line_verdict: str
     generated_at: datetime
     transcript_included: bool
+    rubric_mode: str
+    rubric_mode_label: str
 
 
 class PitchReviewLLMOutput(BaseModel):

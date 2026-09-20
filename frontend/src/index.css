@@ -54,8 +54,11 @@ h1 {
   margin-bottom: 6px;
 }
 
-.field input {
+.field input,
+.field select {
   width: 100%;
+  padding: 6px 8px;
+  font-size: 1rem;
 }
 
 button {
@@ -104,6 +107,17 @@ button:disabled {
   to {
     transform: rotate(360deg);
   }
+}
+
+.rubric-mode-badge {
+  display: inline-block;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--accent);
+  background: var(--accent-light);
+  border-radius: 999px;
+  padding: 4px 12px;
+  margin: 0 0 12px;
 }
 
 .overall-card {

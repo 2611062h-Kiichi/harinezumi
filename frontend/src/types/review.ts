@@ -20,4 +20,8 @@ export interface PitchReviewResponse {
   one_line_verdict: string;
   generated_at: string;
   transcript_included: boolean;
+  rubric_mode: string;
+  rubric_mode_label: string;
 }
+
+export type RubricMode = "business" | "general";

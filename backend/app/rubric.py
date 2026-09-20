@@ -3,7 +3,7 @@ SCALE_MAX = 5
 
 # 「起業の科学」（田所雅之）のリーンスタートアップ検証プロセス
 # （ペインの質 → CPF → PSF → 市場・収益性の定量分析 → PMF）に沿ったルーブリック。
-RUBRIC_CRITERIA = [
+BUSINESS_RUBRIC_CRITERIA = [
     {
         "id": "pain_quality",
         "name": "ペインの質・課題の深さ（Whom/Occasion/Painkillerかビタミンか）",
@@ -74,8 +74,100 @@ RUBRIC_CRITERIA = [
     },
 ]
 
-MAX_TOTAL_SCORE = len(RUBRIC_CRITERIA) * SCALE_MAX
+# 業界・テーマを問わない汎用ピッチ審査ルーブリック
+# （ビジネスモデルや収益性を前提としない、課題〜実現可能性〜インパクト〜検証〜実行力〜伝達力の観点）。
+GENERAL_RUBRIC_CRITERIA = [
+    {
+        "id": "problem_clarity",
+        "name": "課題の明確さ・意義",
+        "description": (
+            "5=解決しようとしている課題・ニーズが具体的で、その重要性が伝わる／"
+            "3=課題は述べられているが重要性の裏付けが弱い／"
+            "1=課題が曖昧、または誰のための取り組みか不明"
+        ),
+    },
+    {
+        "id": "solution_originality",
+        "name": "解決策・アイデアの独自性と有効性",
+        "description": (
+            "5=既存の取り組みとの違いが明確で、課題解決への筋道が具体的かつ説得力がある／"
+            "3=解決策はあるが独自性や効果の裏付けが弱い／"
+            "1=解決策が課題と結びついていない、または既存の取り組みと差がない"
+        ),
+    },
+    {
+        "id": "feasibility_roadmap",
+        "name": "実現可能性・実行計画",
+        "description": (
+            "5=実現までの具体的なステップ・スケジュール・必要なリソースが示されている／"
+            "3=大まかな計画はあるが時期や必要資源など具体性に欠ける／"
+            "1=実現に向けた計画への言及がない"
+        ),
+    },
+    {
+        "id": "impact_significance",
+        "name": "インパクト・意義の大きさ",
+        "description": (
+            "5=取り組みが実現した際に及ぶ影響の範囲・規模が具体的に示されている／"
+            "3=意義への言及はあるが影響の規模感が不明確／"
+            "1=インパクトへの言及がない"
+        ),
+    },
+    {
+        "id": "evidence_validation",
+        "name": "検証・裏付けの質",
+        "description": (
+            "5=データ・実験・ヒアリングなど具体的な根拠に基づいて主張が裏付けられている／"
+            "3=根拠の提示はあるが弱い、または部分的／"
+            "1=主張を裏付ける検証・データがない"
+        ),
+    },
+    {
+        "id": "team_execution",
+        "name": "実行体制・チームの実行力",
+        "description": (
+            "5=取り組みに必要な専門性・実績が明確で、体制に説得力がある／"
+            "3=体制の紹介はあるが実行力の裏付けが弱い／"
+            "1=実行体制について触れられていない"
+        ),
+    },
+    {
+        "id": "presentation_clarity",
+        "name": "プレゼンの分かりやすさ・訴求力",
+        "description": (
+            "5=構成が論理的で、聞き手を惹きつける展開・話し方になっている／"
+            "3=概ね分かりやすいが冗長・構成が弱い部分がある／"
+            "1=構成が分かりにくい、または要点が伝わらない"
+        ),
+    },
+]
+
+RUBRIC_MODES = {
+    "business": {
+        "label": "ビジネスコンテスト向け（起業の科学ベース）",
+        "criteria": BUSINESS_RUBRIC_CRITERIA,
+    },
+    "general": {
+        "label": "汎用ピッチ審査",
+        "criteria": GENERAL_RUBRIC_CRITERIA,
+    },
+}
+
+DEFAULT_MODE = "business"
 
 
-def compute_overall_score(criterion_scores: list[int]) -> int:
-    return round(sum(criterion_scores) / MAX_TOTAL_SCORE * 100)
+def get_rubric_criteria(mode: str) -> list[dict]:
+    if mode not in RUBRIC_MODES:
+        raise ValueError(f"unknown rubric mode: {mode}")
+    return RUBRIC_MODES[mode]["criteria"]
+
+
+def get_rubric_label(mode: str) -> str:
+    if mode not in RUBRIC_MODES:
+        raise ValueError(f"unknown rubric mode: {mode}")
+    return RUBRIC_MODES[mode]["label"]
+
+
+def compute_overall_score(criterion_scores: list[int], mode: str) -> int:
+    max_total = len(get_rubric_criteria(mode)) * SCALE_MAX
+    return round(sum(criterion_scores) / max_total * 100)

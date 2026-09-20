@@ -1,10 +1,11 @@
 import shutil
 import tempfile
 
-from fastapi import APIRouter, File, HTTPException, UploadFile
+from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 
 from app.config import get_settings
 from app.models.schemas import PitchReviewResponse, SlideExtractionResult, TranscriptionResult
+from app.rubric import DEFAULT_MODE, RUBRIC_MODES
 from app.services import audio_extraction, history, review_generator, slide_extractor
 from app.services.transcription import transcribe
 from app.utils.file_validation import save_temp_upload, validate_upload
@@ -53,7 +54,11 @@ async def transcribe_media_endpoint(file: UploadFile = File(...)):
 async def create_review(
     slide_file: UploadFile = File(...),
     media_file: UploadFile | None = File(None),
+    mode: str = Form(DEFAULT_MODE),
 ):
+    if mode not in RUBRIC_MODES:
+        raise HTTPException(status_code=400, detail=f"不明な審査モードです: {mode}")
+
     settings = get_settings()
     validate_upload(slide_file, SLIDE_EXTS, settings.max_slide_mb)
     if media_file is not None:
@@ -75,7 +80,7 @@ async def create_review(
             transcription = await transcribe(media_path, media_file.filename)
             transcript = transcription.text
 
-        review = await review_generator.generate_review(slides, transcript)
+        review = await review_generator.generate_review(slides, transcript, mode)
         try:
             history.save_review(review)
         except OSError:

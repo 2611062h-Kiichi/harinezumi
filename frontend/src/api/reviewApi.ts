@@ -1,4 +1,4 @@
-import type { PitchReviewResponse } from "../types/review";
+import type { PitchReviewResponse, RubricMode } from "../types/review";
 
 const REQUEST_TIMEOUT_MS = 5 * 60 * 1000;
 
@@ -6,10 +6,12 @@ export class ReviewApiError extends Error {}
 
 export async function submitPitchReview(
   slideFile: File,
-  mediaFile?: File | null,
+  mediaFile: File | null | undefined,
+  mode: RubricMode,
 ): Promise<PitchReviewResponse> {
   const formData = new FormData();
   formData.append("slide_file", slideFile);
+  formData.append("mode", mode);
   if (mediaFile) {
     formData.append("media_file", mediaFile);
   }

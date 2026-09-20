@@ -3,7 +3,7 @@ import { UploadForm } from "./components/UploadForm";
 import { LoadingState } from "./components/LoadingState";
 import { ReviewResult } from "./components/ReviewResult";
 import { submitPitchReview, ReviewApiError } from "./api/reviewApi";
-import type { PitchReviewResponse } from "./types/review";
+import type { PitchReviewResponse, RubricMode } from "./types/review";
 
 type Status = "idle" | "submitting" | "success" | "error";
 
@@ -12,11 +12,11 @@ export default function App() {
   const [review, setReview] = useState<PitchReviewResponse | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  async function handleSubmit(slideFile: File, mediaFile: File | null) {
+  async function handleSubmit(slideFile: File, mediaFile: File | null, mode: RubricMode) {
     setStatus("submitting");
     setErrorMessage(null);
     try {
-      const result = await submitPitchReview(slideFile, mediaFile);
+      const result = await submitPitchReview(slideFile, mediaFile, mode);
       setReview(result);
       setStatus("success");
     } catch (err) {

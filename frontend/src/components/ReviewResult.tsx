@@ -11,6 +11,7 @@ interface Props {
 export function ReviewResult({ review, onReset }: Props) {
   return (
     <div className="review-result">
+      <p className="rubric-mode-badge">{review.rubric_mode_label}</p>
       <div className="overall-card">
         <div className="overall-score">{review.overall_score}</div>
         <div>

@@ -1,16 +1,23 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
+import type { RubricMode } from "../types/review";
 
 const MAX_SLIDE_MB = 20;
 const MAX_MEDIA_MB = 300;
 
+const RUBRIC_MODE_OPTIONS: { id: RubricMode; label: string }[] = [
+  { id: "business", label: "ビジネスコンテスト向け（起業の科学ベース）" },
+  { id: "general", label: "汎用ピッチ審査" },
+];
+
 interface Props {
-  onSubmit: (slideFile: File, mediaFile: File | null) => void;
+  onSubmit: (slideFile: File, mediaFile: File | null, mode: RubricMode) => void;
 }
 
 export function UploadForm({ onSubmit }: Props) {
   const [slideFile, setSlideFile] = useState<File | null>(null);
   const [mediaFile, setMediaFile] = useState<File | null>(null);
+  const [mode, setMode] = useState<RubricMode>("business");
   const [error, setError] = useState<string | null>(null);
 
   function handleSlideChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -41,7 +48,7 @@ export function UploadForm({ onSubmit }: Props) {
       setError("スライド資料（PDF または PPTX）を選択してください。");
       return;
     }
-    onSubmit(slideFile, mediaFile);
+    onSubmit(slideFile, mediaFile, mode);
   }
 
   return (
@@ -50,6 +57,17 @@ export function UploadForm({ onSubmit }: Props) {
       <p className="lead">
         ピッチ資料と、任意で発表の音声・動画をアップロードすると、AIが審査員として添削します。
       </p>
+
+      <label className="field">
+        <span>審査モード</span>
+        <select value={mode} onChange={(e) => setMode(e.target.value as RubricMode)}>
+          {RUBRIC_MODE_OPTIONS.map((opt) => (
+            <option key={opt.id} value={opt.id}>
+              {opt.label}
+            </option>
+          ))}
+        </select>
+      </label>
 
       <label className="field">
         <span>スライド資料（PDF / PPTX）*</span>
