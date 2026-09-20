@@ -3,6 +3,7 @@
 ピッチ資料（PDF/PPTX）と、任意で発表の音声・動画をアップロードすると、AIが学生・大学主催のビジネスプランコンテストの審査員として、「起業の科学」（田所雅之）のリーンスタートアップ検証フレームワーク（ペインの質・CPF・PSF・市場定量分析・PMF兆候など）に基づく7項目のルーブリックに沿って採点・添削するローカルWebアプリです。
 
 - スライド抽出: `pdfplumber` (PDF) / `python-pptx` (PPTX)
+- 音声・動画の取得: ファイルアップロード、または直接リンク/YouTubeなどのURL（`yt-dlp`）
 - 音声書き起こし: OpenAI Whisper API
 - 審査生成: Anthropic Claude API (`claude-sonnet-5`)
 - フロントエンド: React + Vite + TypeScript
@@ -12,7 +13,7 @@
 
 - Python 3.11 以上
 - Node.js 18 以上
-- ffmpeg（動画から音声を抽出する場合のみ必要。PATHに通しておくこと）
+- ffmpeg（動画からの音声抽出、およびURLからの音声取得に必要。PATHに通しておくこと）
 - Anthropic APIキー、および音声を使う場合はOpenAI APIキー
 
 ## セットアップ
@@ -46,10 +47,14 @@ curl -F "file=@sample.pptx" http://localhost:8000/api/slides/extract
 
 # ピッチ審査（要 ANTHROPIC_API_KEY、音声を渡す場合は OPENAI_API_KEY も）
 curl -F "slide_file=@sample.pdf" -F "media_file=@sample.mp3" http://localhost:8000/api/review
+
+# 音声・動画をURLで渡す場合（ファイルの代わりに media_url を指定）
+curl -F "slide_file=@sample.pdf" -F "media_url=https://example.com/pitch.mp4" http://localhost:8000/api/review
 ```
 
 ## 制約・今後の改善候補
 
 - 現状は同期リクエスト1回で処理するMVPです。処理中の進捗はフロントエンドの目安表示のみで、実際のステージとは連動していません（本格的な進捗表示にはポーリングやWebSocketが必要）。
 - Whisper APIのファイルサイズ上限（25MB相当）を超える長い録音は、事前に短く分割してください（自動分割は未実装）。
+- 音声・動画のURL指定は `yt-dlp` で取得しています。対応可否はサイトによって異なり、非公開・年齢制限つきコンテンツなどは取得できない場合があります。著作権・利用規約上、指定者に権利のあるコンテンツのみ使用してください。
 - 認証・データベースは実装していません（審査結果は `backend/data/reviews/` にJSONとして保存されるのみ）。

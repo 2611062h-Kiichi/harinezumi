@@ -12,11 +12,16 @@ export default function App() {
   const [review, setReview] = useState<PitchReviewResponse | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  async function handleSubmit(slideFile: File, mediaFile: File | null, mode: RubricMode) {
+  async function handleSubmit(
+    slideFile: File,
+    mediaFile: File | null,
+    mediaUrl: string | null,
+    mode: RubricMode,
+  ) {
     setStatus("submitting");
     setErrorMessage(null);
     try {
-      const result = await submitPitchReview(slideFile, mediaFile, mode);
+      const result = await submitPitchReview(slideFile, mediaFile, mediaUrl, mode);
       setReview(result);
       setStatus("success");
     } catch (err) {

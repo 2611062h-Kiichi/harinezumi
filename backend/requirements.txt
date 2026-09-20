@@ -7,3 +7,4 @@ python-pptx
 anthropic
 openai
 python-dotenv
+yt-dlp

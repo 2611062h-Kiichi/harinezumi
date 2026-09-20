@@ -7,6 +7,7 @@ from app.config import get_settings
 from app.models.schemas import PitchReviewResponse, SlideExtractionResult, TranscriptionResult
 from app.rubric import DEFAULT_MODE, RUBRIC_MODES
 from app.services import audio_extraction, history, review_generator, slide_extractor
+from app.services.media_url import download_audio_from_url
 from app.services.transcription import transcribe
 from app.utils.file_validation import save_temp_upload, validate_upload
 
@@ -54,10 +55,13 @@ async def transcribe_media_endpoint(file: UploadFile = File(...)):
 async def create_review(
     slide_file: UploadFile = File(...),
     media_file: UploadFile | None = File(None),
+    media_url: str | None = Form(None),
     mode: str = Form(DEFAULT_MODE),
 ):
     if mode not in RUBRIC_MODES:
         raise HTTPException(status_code=400, detail=f"不明な審査モードです: {mode}")
+    if media_file is not None and media_url:
+        raise HTTPException(status_code=400, detail="音声/動画はファイルとURLのどちらか一方のみ指定してください。")
 
     settings = get_settings()
     validate_upload(slide_file, SLIDE_EXTS, settings.max_slide_mb)
@@ -72,12 +76,17 @@ async def create_review(
         transcript = None
         if media_file is not None:
             media_path = save_temp_upload(media_file, tmp_dir)
-            if audio_extraction.is_video_file(media_file.filename):
+            media_filename = media_file.filename
+            if audio_extraction.is_video_file(media_filename):
                 try:
                     media_path = audio_extraction.extract_audio(media_path, tmp_dir)
                 except RuntimeError as e:
                     raise HTTPException(status_code=500, detail=str(e)) from e
-            transcription = await transcribe(media_path, media_file.filename)
+            transcription = await transcribe(media_path, media_filename)
+            transcript = transcription.text
+        elif media_url:
+            media_path, media_filename = download_audio_from_url(media_url, tmp_dir, settings.max_media_mb)
+            transcription = await transcribe(media_path, media_filename)
             transcript = transcription.text
 
         review = await review_generator.generate_review(slides, transcript, mode)

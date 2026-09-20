@@ -10,13 +10,17 @@ const RUBRIC_MODE_OPTIONS: { id: RubricMode; label: string }[] = [
   { id: "general", label: "汎用ピッチ審査" },
 ];
 
+type MediaInputType = "file" | "url";
+
 interface Props {
-  onSubmit: (slideFile: File, mediaFile: File | null, mode: RubricMode) => void;
+  onSubmit: (slideFile: File, mediaFile: File | null, mediaUrl: string | null, mode: RubricMode) => void;
 }
 
 export function UploadForm({ onSubmit }: Props) {
   const [slideFile, setSlideFile] = useState<File | null>(null);
+  const [mediaInputType, setMediaInputType] = useState<MediaInputType>("file");
   const [mediaFile, setMediaFile] = useState<File | null>(null);
+  const [mediaUrl, setMediaUrl] = useState("");
   const [mode, setMode] = useState<RubricMode>("business");
   const [error, setError] = useState<string | null>(null);
 
@@ -42,13 +46,29 @@ export function UploadForm({ onSubmit }: Props) {
     setMediaFile(file);
   }
 
+  function handleMediaInputTypeChange(type: MediaInputType) {
+    setMediaInputType(type);
+    setMediaFile(null);
+    setMediaUrl("");
+    setError(null);
+  }
+
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
     if (!slideFile) {
       setError("スライド資料（PDF または PPTX）を選択してください。");
       return;
     }
-    onSubmit(slideFile, mediaFile, mode);
+    if (mediaInputType === "url" && mediaUrl && !/^https?:\/\//i.test(mediaUrl)) {
+      setError("音声/動画のURLは http:// または https:// から始まる必要があります。");
+      return;
+    }
+    onSubmit(
+      slideFile,
+      mediaInputType === "file" ? mediaFile : null,
+      mediaInputType === "url" && mediaUrl ? mediaUrl : null,
+      mode,
+    );
   }
 
   return (
@@ -74,10 +94,46 @@ export function UploadForm({ onSubmit }: Props) {
         <input type="file" accept=".pdf,.pptx" onChange={handleSlideChange} />
       </label>
 
-      <label className="field">
+      <div className="field">
         <span>発表の音声・動画（任意）</span>
-        <input type="file" accept="audio/*,video/*" onChange={handleMediaChange} />
-      </label>
+        <div className="media-input-toggle">
+          <label>
+            <input
+              type="radio"
+              name="media-input-type"
+              checked={mediaInputType === "file"}
+              onChange={() => handleMediaInputTypeChange("file")}
+            />
+            ファイルをアップロード
+          </label>
+          <label>
+            <input
+              type="radio"
+              name="media-input-type"
+              checked={mediaInputType === "url"}
+              onChange={() => handleMediaInputTypeChange("url")}
+            />
+            URLを指定
+          </label>
+        </div>
+
+        {mediaInputType === "file" ? (
+          <input type="file" accept="audio/*,video/*" onChange={handleMediaChange} />
+        ) : (
+          <>
+            <input
+              type="url"
+              placeholder="https://example.com/pitch.mp4 または YouTubeなどのURL"
+              value={mediaUrl}
+              onChange={(e) => setMediaUrl(e.target.value)}
+            />
+            <p className="note">
+              直接リンクされた音声/動画ファイル、またはYouTubeなど対応プラットフォームのURLに対応しています。
+              著作権・利用規約上、自分に権利のあるコンテンツのみ指定してください。
+            </p>
+          </>
+        )}
+      </div>
 
       {error && <p className="error-text">{error}</p>}
 

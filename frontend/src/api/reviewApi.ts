@@ -7,6 +7,7 @@ export class ReviewApiError extends Error {}
 export async function submitPitchReview(
   slideFile: File,
   mediaFile: File | null | undefined,
+  mediaUrl: string | null | undefined,
   mode: RubricMode,
 ): Promise<PitchReviewResponse> {
   const formData = new FormData();
@@ -14,6 +15,8 @@ export async function submitPitchReview(
   formData.append("mode", mode);
   if (mediaFile) {
     formData.append("media_file", mediaFile);
+  } else if (mediaUrl) {
+    formData.append("media_url", mediaUrl);
   }
 
   const controller = new AbortController();
