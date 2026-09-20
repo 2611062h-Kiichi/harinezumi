@@ -13,7 +13,7 @@ export default function App() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   async function handleSubmit(
-    slideFile: File,
+    slideFile: File | null,
     mediaFile: File | null,
     mediaUrl: string | null,
     mode: RubricMode,

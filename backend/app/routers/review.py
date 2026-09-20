@@ -53,7 +53,7 @@ async def transcribe_media_endpoint(file: UploadFile = File(...)):
 
 @router.post("/review", response_model=PitchReviewResponse)
 async def create_review(
-    slide_file: UploadFile = File(...),
+    slide_file: UploadFile | None = File(None),
     media_file: UploadFile | None = File(None),
     media_url: str | None = Form(None),
     mode: str = Form(DEFAULT_MODE),
@@ -62,16 +62,21 @@ async def create_review(
         raise HTTPException(status_code=400, detail=f"不明な審査モードです: {mode}")
     if media_file is not None and media_url:
         raise HTTPException(status_code=400, detail="音声/動画はファイルとURLのどちらか一方のみ指定してください。")
+    if slide_file is None and media_file is None and not media_url:
+        raise HTTPException(status_code=400, detail="スライド資料または音声/動画のいずれかを指定してください。")
 
     settings = get_settings()
-    validate_upload(slide_file, SLIDE_EXTS, settings.max_slide_mb)
+    if slide_file is not None:
+        validate_upload(slide_file, SLIDE_EXTS, settings.max_slide_mb)
     if media_file is not None:
         validate_upload(media_file, MEDIA_EXTS, settings.max_media_mb)
 
     tmp_dir = tempfile.mkdtemp()
     try:
-        slide_path = save_temp_upload(slide_file, tmp_dir)
-        slides = slide_extractor.extract_slides(slide_path, slide_file.filename)
+        slides = None
+        if slide_file is not None:
+            slide_path = save_temp_upload(slide_file, tmp_dir)
+            slides = slide_extractor.extract_slides(slide_path, slide_file.filename)
 
         transcript = None
         if media_file is not None:

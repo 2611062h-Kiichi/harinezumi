@@ -5,13 +5,15 @@ const REQUEST_TIMEOUT_MS = 5 * 60 * 1000;
 export class ReviewApiError extends Error {}
 
 export async function submitPitchReview(
-  slideFile: File,
+  slideFile: File | null | undefined,
   mediaFile: File | null | undefined,
   mediaUrl: string | null | undefined,
   mode: RubricMode,
 ): Promise<PitchReviewResponse> {
   const formData = new FormData();
-  formData.append("slide_file", slideFile);
+  if (slideFile) {
+    formData.append("slide_file", slideFile);
+  }
   formData.append("mode", mode);
   if (mediaFile) {
     formData.append("media_file", mediaFile);

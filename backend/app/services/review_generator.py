@@ -63,18 +63,19 @@ def build_system_prompt(mode: str) -> str:
 """
 
 
-def build_user_prompt(slides: SlideExtractionResult, transcript: str | None) -> str:
-    slide_sections = []
-    for slide in slides.slides:
-        section = f"## スライド{slide.index}\n{slide.text or '(テキストなし)'}"
-        if slide.notes:
-            section += f"\n(スピーカーノート: {slide.notes})"
-        slide_sections.append(section)
-
-    parts = [
-        f"# ピッチ資料（{slides.filename}）",
-        "\n\n".join(slide_sections),
-    ]
+def build_user_prompt(slides: SlideExtractionResult | None, transcript: str | None) -> str:
+    parts = []
+    if slides:
+        slide_sections = []
+        for slide in slides.slides:
+            section = f"## スライド{slide.index}\n{slide.text or '(テキストなし)'}"
+            if slide.notes:
+                section += f"\n(スピーカーノート: {slide.notes})"
+            slide_sections.append(section)
+        parts.append(f"# ピッチ資料（{slides.filename}）")
+        parts.append("\n\n".join(slide_sections))
+    else:
+        parts.append("# ピッチ資料\nスライド資料はありません。発表音声の書き起こしのみで審査してください。")
 
     if transcript:
         parts.append(f"# 発表音声の書き起こし\n{transcript}")
@@ -85,10 +86,13 @@ def build_user_prompt(slides: SlideExtractionResult, transcript: str | None) -> 
 
 
 async def generate_review(
-    slides: SlideExtractionResult,
+    slides: SlideExtractionResult | None,
     transcript: str | None,
     mode: str = DEFAULT_MODE,
 ) -> PitchReviewResponse:
+    if slides is None and not transcript:
+        raise HTTPException(status_code=400, detail="スライド資料または音声/動画のいずれかを指定してください。")
+
     settings = get_settings()
     if not settings.anthropic_api_key:
         raise HTTPException(status_code=400, detail="ANTHROPIC_API_KEYが設定されていません。")

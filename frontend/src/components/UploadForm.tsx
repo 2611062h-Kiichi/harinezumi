@@ -13,7 +13,12 @@ const RUBRIC_MODE_OPTIONS: { id: RubricMode; label: string }[] = [
 type MediaInputType = "file" | "url";
 
 interface Props {
-  onSubmit: (slideFile: File, mediaFile: File | null, mediaUrl: string | null, mode: RubricMode) => void;
+  onSubmit: (
+    slideFile: File | null,
+    mediaFile: File | null,
+    mediaUrl: string | null,
+    mode: RubricMode,
+  ) => void;
 }
 
 export function UploadForm({ onSubmit }: Props) {
@@ -53,10 +58,13 @@ export function UploadForm({ onSubmit }: Props) {
     setError(null);
   }
 
+  const hasMedia = mediaInputType === "file" ? !!mediaFile : !!mediaUrl;
+  const canSubmit = !!slideFile || hasMedia;
+
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    if (!slideFile) {
-      setError("スライド資料（PDF または PPTX）を選択してください。");
+    if (!slideFile && !hasMedia) {
+      setError("スライド資料、または発表の音声・動画のいずれかを指定してください。");
       return;
     }
     if (mediaInputType === "url" && mediaUrl && !/^https?:\/\//i.test(mediaUrl)) {
@@ -75,7 +83,8 @@ export function UploadForm({ onSubmit }: Props) {
     <form className="upload-form" onSubmit={handleSubmit}>
       <h1>ピッチ審査を添削するAI</h1>
       <p className="lead">
-        ピッチ資料と、任意で発表の音声・動画をアップロードすると、AIが審査員として添削します。
+        ピッチ資料（スライド）と発表の音声・動画をアップロードすると、AIが審査員として添削します。
+        どちらか一方だけでも審査できます。
       </p>
 
       <label className="field">
@@ -90,7 +99,7 @@ export function UploadForm({ onSubmit }: Props) {
       </label>
 
       <label className="field">
-        <span>スライド資料（PDF / PPTX）*</span>
+        <span>スライド資料（PDF / PPTX、任意）</span>
         <input type="file" accept=".pdf,.pptx" onChange={handleSlideChange} />
       </label>
 
@@ -137,7 +146,7 @@ export function UploadForm({ onSubmit }: Props) {
 
       {error && <p className="error-text">{error}</p>}
 
-      <button type="submit" disabled={!slideFile}>
+      <button type="submit" disabled={!canSubmit}>
         審査を開始する
       </button>
     </form>
