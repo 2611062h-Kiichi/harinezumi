@@ -3,7 +3,9 @@ import uuid
 
 from app.models.schemas import PitchReviewResponse
 
-DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "reviews")
+# backend/app/services/history.py -> backend/data/reviews
+BACKEND_DIR = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+DATA_DIR = os.path.join(BACKEND_DIR, "data", "reviews")
 
 
 def save_review(review: PitchReviewResponse) -> None:
