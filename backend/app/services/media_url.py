@@ -1,4 +1,5 @@
 import os
+import shutil
 from urllib.parse import urlparse
 
 import yt_dlp
@@ -18,6 +19,14 @@ def download_audio_from_url(url: str, out_dir: str, max_media_mb: int) -> tuple[
     yt-dlp-supported platform (YouTube, Vimeo, etc.) — and returns
     (local_audio_path, display_filename)."""
     _validate_url(url)
+    if shutil.which("ffmpeg") is None:
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                "ffmpegがインストールされていません。URLからの音声取得にはffmpegが必要です。"
+                "READMEの手順に従ってffmpegをインストールし、PATHに追加してから再度お試しください。"
+            ),
+        )
 
     out_template = os.path.join(out_dir, "url_media.%(ext)s")
     ydl_opts = {
