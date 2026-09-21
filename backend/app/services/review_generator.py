@@ -1,7 +1,11 @@
+import logging
 from datetime import datetime, timezone
 
+import anthropic
 from anthropic import AsyncAnthropic
 from fastapi import HTTPException
+
+logger = logging.getLogger(__name__)
 
 from app.config import get_settings
 from app.models.schemas import PitchReviewLLMOutput, PitchReviewResponse, SlideExtractionResult
@@ -114,7 +118,23 @@ async def generate_review(
             messages=[{"role": "user", "content": user_prompt}],
             output_format=PitchReviewLLMOutput,
         )
+    except anthropic.AuthenticationError as e:
+        logger.exception("Anthropic authentication failed")
+        raise HTTPException(status_code=400, detail="ANTHROPIC_API_KEYが正しくありません。") from e
+    except anthropic.BadRequestError as e:
+        logger.exception("Anthropic API rejected the request")
+        raise HTTPException(status_code=502, detail=f"Anthropic APIエラー: {e.message}") from e
+    except anthropic.RateLimitError as e:
+        logger.exception("Anthropic API rate limited")
+        raise HTTPException(
+            status_code=502,
+            detail="Anthropic APIの利用上限に達しました。しばらく待ってから再度お試しください。",
+        ) from e
+    except anthropic.APIConnectionError as e:
+        logger.exception("Anthropic API connection error")
+        raise HTTPException(status_code=502, detail="Anthropic APIへの接続に失敗しました。ネットワークを確認してください。") from e
     except Exception as e:
+        logger.exception("AI review generation failed")
         raise HTTPException(status_code=502, detail="AIレビューの生成に失敗しました。もう一度お試しください。") from e
 
     llm_output = response.parsed_output
