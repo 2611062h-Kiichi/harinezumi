@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
-import type { RubricMode } from "../types/review";
+import type { FeedbackTone, RubricMode } from "../types/review";
 
 const MAX_SLIDE_MB = 20;
 const MAX_MEDIA_MB = 300;
@@ -8,6 +8,12 @@ const MAX_MEDIA_MB = 300;
 const RUBRIC_MODE_OPTIONS: { id: RubricMode; label: string }[] = [
   { id: "business", label: "ビジネスコンテスト向け（起業の科学ベース）" },
   { id: "general", label: "汎用ピッチ審査" },
+];
+
+const TONE_OPTIONS: { id: FeedbackTone; label: string }[] = [
+  { id: "mild", label: "甘口（励まし重視）" },
+  { id: "normal", label: "普通" },
+  { id: "spicy", label: "辛口（VC級の厳しさ）" },
 ];
 
 type MediaInputType = "file" | "url";
@@ -18,6 +24,7 @@ interface Props {
     mediaFile: File | null,
     mediaUrl: string | null,
     mode: RubricMode,
+    tone: FeedbackTone,
   ) => void;
 }
 
@@ -27,6 +34,7 @@ export function UploadForm({ onSubmit }: Props) {
   const [mediaFile, setMediaFile] = useState<File | null>(null);
   const [mediaUrl, setMediaUrl] = useState("");
   const [mode, setMode] = useState<RubricMode>("business");
+  const [tone, setTone] = useState<FeedbackTone>("normal");
   const [error, setError] = useState<string | null>(null);
 
   function handleSlideChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -76,6 +84,7 @@ export function UploadForm({ onSubmit }: Props) {
       mediaInputType === "file" ? mediaFile : null,
       mediaInputType === "url" && mediaUrl ? mediaUrl : null,
       mode,
+      tone,
     );
   }
 
@@ -91,6 +100,17 @@ export function UploadForm({ onSubmit }: Props) {
         <span>審査モード</span>
         <select value={mode} onChange={(e) => setMode(e.target.value as RubricMode)}>
           {RUBRIC_MODE_OPTIONS.map((opt) => (
+            <option key={opt.id} value={opt.id}>
+              {opt.label}
+            </option>
+          ))}
+        </select>
+      </label>
+
+      <label className="field">
+        <span>フィードバックのトーン</span>
+        <select value={tone} onChange={(e) => setTone(e.target.value as FeedbackTone)}>
+          {TONE_OPTIONS.map((opt) => (
             <option key={opt.id} value={opt.id}>
               {opt.label}
             </option>

@@ -49,8 +49,31 @@ MODE_EXTRA_NOTES = {
     ),
 }
 
+DEFAULT_TONE = "normal"
 
-def build_system_prompt(mode: str) -> str:
+TONE_LABELS = {
+    "mild": "甘口（励まし重視）",
+    "normal": "普通",
+    "spicy": "辛口（VC級の厳しさ）",
+}
+
+TONE_INSTRUCTIONS = {
+    "mild": (
+        "フィードバックの口調は「甘口」です。採点自体は正直に行いつつも、"
+        "良い点を先に具体的に褒め、改善点は励ますような前向きな言葉で伝えてください。"
+        "高圧的な言い回しや突き放すような表現は避けてください。"
+    ),
+    "normal": "厳しくても構わないので、事実に基づいた誠実なフィードバックをしてください。",
+    "spicy": (
+        "フィードバックの口調は「辛口」です。投資家・審査員として一切の忖度をせず、"
+        "弱点や詰めの甘さを遠慮なくストレートに指摘してください。"
+        "曖昧な言い回しでごまかさず、率直かつ辛辣な表現を使って構いません"
+        "（ただし人格攻撃や暴言は避け、あくまで内容への指摘に徹すること）。"
+    ),
+}
+
+
+def build_system_prompt(mode: str, tone: str = DEFAULT_TONE) -> str:
     criteria = get_rubric_criteria(mode)
     criteria_lines = chr(10).join(f"- {c['id']}: {c['name']} ({c['description']})" for c in criteria)
     return f"""{MODE_INTROS[mode]}
@@ -62,7 +85,8 @@ def build_system_prompt(mode: str) -> str:
 評価項目:
 {criteria_lines}
 
-厳しくても構わないので、事実に基づいた誠実なフィードバックをしてください。
+{TONE_INSTRUCTIONS[tone]}
+採点そのものはトーンに関わらず公正かつ一貫させ、口調だけをトーンに合わせてください。
 改善提案は抽象的な精神論ではなく、実際にスライドや発表内容のどこをどう直すべきかが分かる具体的な内容にしてください。
 """
 
@@ -93,6 +117,7 @@ async def generate_review(
     slides: SlideExtractionResult | None,
     transcript: str | None,
     mode: str = DEFAULT_MODE,
+    tone: str = DEFAULT_TONE,
 ) -> PitchReviewResponse:
     if slides is None and not transcript:
         raise HTTPException(status_code=400, detail="スライド資料または音声/動画のいずれかを指定してください。")
@@ -105,9 +130,11 @@ async def generate_review(
         rubric_criteria = get_rubric_criteria(mode)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=f"不明な審査モードです: {mode}") from e
+    if tone not in TONE_INSTRUCTIONS:
+        raise HTTPException(status_code=400, detail=f"不明なフィードバックトーンです: {tone}")
 
     client = AsyncAnthropic(api_key=settings.anthropic_api_key)
-    system_prompt = build_system_prompt(mode)
+    system_prompt = build_system_prompt(mode, tone)
     user_prompt = build_user_prompt(slides, transcript)
 
     try:
@@ -163,4 +190,6 @@ async def generate_review(
         transcript_included=transcript is not None,
         rubric_mode=mode,
         rubric_mode_label=get_rubric_label(mode),
+        feedback_tone=tone,
+        feedback_tone_label=TONE_LABELS[tone],
     )

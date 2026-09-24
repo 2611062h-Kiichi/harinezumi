@@ -43,6 +43,8 @@ class PitchReviewResponse(BaseModel):
     transcript_included: bool
     rubric_mode: str
     rubric_mode_label: str
+    feedback_tone: str
+    feedback_tone_label: str
 
 
 class PitchReviewLLMOutput(BaseModel):

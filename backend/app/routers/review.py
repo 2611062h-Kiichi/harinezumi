@@ -8,6 +8,7 @@ from app.models.schemas import PitchReviewResponse, SlideExtractionResult, Trans
 from app.rubric import DEFAULT_MODE, RUBRIC_MODES
 from app.services import audio_extraction, history, review_generator, slide_extractor
 from app.services.media_url import download_audio_from_url
+from app.services.review_generator import DEFAULT_TONE, TONE_LABELS
 from app.services.transcription import transcribe
 from app.utils.file_validation import save_temp_upload, validate_upload
 
@@ -57,9 +58,12 @@ async def create_review(
     media_file: UploadFile | None = File(None),
     media_url: str | None = Form(None),
     mode: str = Form(DEFAULT_MODE),
+    tone: str = Form(DEFAULT_TONE),
 ):
     if mode not in RUBRIC_MODES:
         raise HTTPException(status_code=400, detail=f"不明な審査モードです: {mode}")
+    if tone not in TONE_LABELS:
+        raise HTTPException(status_code=400, detail=f"不明なフィードバックトーンです: {tone}")
     if media_file is not None and media_url:
         raise HTTPException(status_code=400, detail="音声/動画はファイルとURLのどちらか一方のみ指定してください。")
     if slide_file is None and media_file is None and not media_url:
@@ -94,7 +98,7 @@ async def create_review(
             transcription = await transcribe(media_path, media_filename)
             transcript = transcription.text
 
-        review = await review_generator.generate_review(slides, transcript, mode)
+        review = await review_generator.generate_review(slides, transcript, mode, tone)
         try:
             history.save_review(review)
         except OSError:

@@ -22,6 +22,9 @@ export interface PitchReviewResponse {
   transcript_included: boolean;
   rubric_mode: string;
   rubric_mode_label: string;
+  feedback_tone: string;
+  feedback_tone_label: string;
 }
 
 export type RubricMode = "business" | "general";
+export type FeedbackTone = "mild" | "normal" | "spicy";
