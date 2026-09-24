@@ -4,6 +4,7 @@ export interface CriterionScore {
   score: number;
   max_score: number;
   comment: string;
+  confidence: number;
 }
 
 export interface ImprovementSuggestion {

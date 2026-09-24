@@ -5,18 +5,17 @@ import anthropic
 from anthropic import AsyncAnthropic
 from fastapi import HTTPException
 
-logger = logging.getLogger(__name__)
-
 from app.config import get_settings
-from app.models.schemas import PitchReviewLLMOutput, PitchReviewResponse, SlideExtractionResult
-from app.rubric import (
-    DEFAULT_MODE,
-    SCALE_MAX,
-    SCALE_MIN,
-    compute_overall_score,
-    get_rubric_criteria,
-    get_rubric_label,
+from app.models.schemas import (
+    CriterionScore,
+    PitchReviewLLMOutput,
+    PitchReviewResponse,
+    SlideExtractionResult,
 )
+from app.rubric import DEFAULT_MODE, SCALE_MAX, compute_overall_score, get_rubric_criteria, get_rubric_label
+from app.services.jev_scorer import JevCriterionScore, score_with_jev
+
+logger = logging.getLogger(__name__)
 
 MODE_INTROS = {
     "business": """あなたは学生・大学主催のビジネスプランコンテストの経験豊富な審査員です。
@@ -38,17 +37,6 @@ MODE_INTROS = {
 実現可能か、具体的な根拠に裏付けられているかを公正に審査してください。""",
 }
 
-MODE_EXTRA_NOTES = {
-    "business": (
-        "特にCPF/PSFの検証項目は、「検証した」という主張だけでなく、"
-        "実際にインタビュー人数・MVPの結果など一次情報に基づく根拠があるかを厳しく確認してください。"
-    ),
-    "general": (
-        "特に「検証・裏付けの質」は、印象論ではなくデータ・実験・ヒアリングなど"
-        "具体的な根拠があるかを厳しく確認してください。"
-    ),
-}
-
 DEFAULT_TONE = "normal"
 
 TONE_LABELS = {
@@ -59,11 +47,11 @@ TONE_LABELS = {
 
 TONE_INSTRUCTIONS = {
     "mild": (
-        "フィードバックの口調は「甘口」です。採点自体は正直に行いつつも、"
-        "良い点を先に具体的に褒め、改善点は励ますような前向きな言葉で伝えてください。"
+        "フィードバックの口調は「甘口」です。良い点を先に具体的に褒め、"
+        "改善点は励ますような前向きな言葉で伝えてください。"
         "高圧的な言い回しや突き放すような表現は避けてください。"
     ),
-    "normal": "厳しくても構わないので、事実に基づいた誠実なフィードバックをしてください。",
+    "normal": "事実に基づいた誠実なフィードバックをしてください。",
     "spicy": (
         "フィードバックの口調は「辛口」です。投資家・審査員として一切の忖度をせず、"
         "弱点や詰めの甘さを遠慮なくストレートに指摘してください。"
@@ -75,18 +63,18 @@ TONE_INSTRUCTIONS = {
 
 def build_system_prompt(mode: str, tone: str = DEFAULT_TONE) -> str:
     criteria = get_rubric_criteria(mode)
-    criteria_lines = chr(10).join(f"- {c['id']}: {c['name']} ({c['description']})" for c in criteria)
+    criteria_lines = chr(10).join(f"- {c['id']}: {c['name']}" for c in criteria)
     return f"""{MODE_INTROS[mode]}
 
-審査は必ず以下の{len(criteria)}つの評価項目に沿って行い、他の項目を追加しないでください。
-各項目は{SCALE_MIN}〜{SCALE_MAX}点で採点し、採点根拠となる具体的なコメントを日本語で書いてください。
-{MODE_EXTRA_NOTES[mode]}
-
-評価項目:
+以下の{len(criteria)}つの評価項目について、それぞれの点数はすでに確定しています
+（採点は別のモデルが担当し、あなたはコメント執筆のみを担当します）。
 {criteria_lines}
 
+ユーザーメッセージ内の「各項目の確定スコア」セクションに記載された点数を踏まえ、
+なぜその点数になるのかが分かる具体的なコメントを日本語で書いてください。
+点数そのものを変更したり、独自に採点し直したりしないでください。
+
 {TONE_INSTRUCTIONS[tone]}
-採点そのものはトーンに関わらず公正かつ一貫させ、口調だけをトーンに合わせてください。
 改善提案は抽象的な精神論ではなく、実際にスライドや発表内容のどこをどう直すべきかが分かる具体的な内容にしてください。
 """
 
@@ -113,6 +101,15 @@ def build_user_prompt(slides: SlideExtractionResult | None, transcript: str | No
     return "\n\n".join(parts)
 
 
+def build_score_context(mode: str, jev_scores: dict[str, JevCriterionScore]) -> str:
+    criteria = get_rubric_criteria(mode)
+    lines = []
+    for c in criteria:
+        s = jev_scores[c["id"]]
+        lines.append(f"- {c['id']}（{c['name']}）: {s.score_1_5:.1f} / {SCALE_MAX}（確信度 {s.confidence * 100:.0f}%）")
+    return "# 各項目の確定スコア（変更不可。この点数を踏まえてコメントを書くこと）\n" + "\n".join(lines)
+
+
 async def generate_review(
     slides: SlideExtractionResult | None,
     transcript: str | None,
@@ -133,9 +130,15 @@ async def generate_review(
     if tone not in TONE_INSTRUCTIONS:
         raise HTTPException(status_code=400, detail=f"不明なフィードバックトーンです: {tone}")
 
+    pitch_content = build_user_prompt(slides, transcript)
+
+    # 1. Jev scores every criterion (fast, calibrated, deterministic-ish).
+    jev_scores = await score_with_jev(pitch_content, mode)
+
+    # 2. Claude writes the qualitative narrative around those fixed scores.
     client = AsyncAnthropic(api_key=settings.anthropic_api_key)
     system_prompt = build_system_prompt(mode, tone)
-    user_prompt = build_user_prompt(slides, transcript)
+    user_prompt = pitch_content + "\n\n" + build_score_context(mode, jev_scores)
 
     try:
         response = await client.messages.parse(
@@ -168,21 +171,26 @@ async def generate_review(
     if llm_output is None:
         raise HTTPException(status_code=502, detail="AIレビューの生成に失敗しました。もう一度お試しください。")
 
-    # Rubric IDs/names/max_score are pinned server-side rather than trusted from the model,
-    # and the overall score is computed deterministically from the criterion scores.
-    rubric_by_id = {c["id"]: c for c in rubric_criteria}
-    for criterion in llm_output.criteria:
-        rubric = rubric_by_id.get(criterion.id)
-        if rubric:
-            criterion.name = rubric["name"]
-        criterion.max_score = SCALE_MAX
+    comments_by_id = {c.id: c.comment for c in llm_output.criterion_comments}
 
-    overall_score = compute_overall_score([c.score for c in llm_output.criteria], mode)
+    criteria_out = [
+        CriterionScore(
+            id=c["id"],
+            name=c["name"],
+            score=round(jev_scores[c["id"]].score_1_5),
+            max_score=SCALE_MAX,
+            comment=comments_by_id.get(c["id"], ""),
+            confidence=jev_scores[c["id"]].confidence,
+        )
+        for c in rubric_criteria
+    ]
+
+    overall_score = compute_overall_score([jev_scores[c["id"]].score_1_5 for c in rubric_criteria], mode)
 
     return PitchReviewResponse(
         overall_score=overall_score,
         overall_summary=llm_output.overall_summary,
-        criteria=llm_output.criteria,
+        criteria=criteria_out,
         strengths=llm_output.strengths,
         improvements=llm_output.improvements,
         one_line_verdict=llm_output.one_line_verdict,

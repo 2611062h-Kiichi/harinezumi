@@ -16,6 +16,7 @@ export function CriterionCard({ criterion }: { criterion: CriterionScore }) {
         />
       </div>
       <p className="criterion-comment">{criterion.comment}</p>
+      <p className="criterion-confidence">AI確信度: {Math.round(criterion.confidence * 100)}%</p>
     </div>
   );
 }

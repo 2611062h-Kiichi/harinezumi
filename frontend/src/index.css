@@ -213,6 +213,13 @@ button:disabled {
   font-size: 0.92rem;
 }
 
+.criterion-confidence {
+  margin: 6px 0 0;
+  color: var(--accent);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
 .improvements li {
   margin-bottom: 12px;
 }

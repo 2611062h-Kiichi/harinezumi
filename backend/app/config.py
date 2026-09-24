@@ -8,6 +8,7 @@ class Settings(BaseSettings):
 
     anthropic_api_key: str = ""
     openai_api_key: str = ""
+    typesafe_api_key: str = ""
     claude_model: str = "claude-sonnet-5"
     whisper_model: str = "whisper-1"
     max_slide_mb: int = 20
