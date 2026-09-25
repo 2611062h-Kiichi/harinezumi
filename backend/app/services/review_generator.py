@@ -1,18 +1,21 @@
 import logging
 from datetime import datetime, timezone
+from typing import TypeVar
 
 import anthropic
 from anthropic import AsyncAnthropic
 from fastapi import HTTPException
+from pydantic import BaseModel
 
 from app.config import get_settings
 from app.models.schemas import (
     CriterionScore,
     PitchReviewLLMOutput,
+    PitchReviewLLMOutputFallback,
     PitchReviewResponse,
     SlideExtractionResult,
 )
-from app.rubric import DEFAULT_MODE, SCALE_MAX, compute_overall_score, get_rubric_criteria, get_rubric_label
+from app.rubric import DEFAULT_MODE, SCALE_MAX, SCALE_MIN, compute_overall_score, get_rubric_criteria, get_rubric_label
 from app.services.jev_scorer import JevCriterionScore, score_with_jev
 
 logger = logging.getLogger(__name__)
@@ -61,18 +64,26 @@ TONE_INSTRUCTIONS = {
 }
 
 
-def build_system_prompt(mode: str, tone: str = DEFAULT_TONE) -> str:
+def build_system_prompt(mode: str, tone: str = DEFAULT_TONE, jev_available: bool = True) -> str:
     criteria = get_rubric_criteria(mode)
     criteria_lines = chr(10).join(f"- {c['id']}: {c['name']}" for c in criteria)
-    return f"""{MODE_INTROS[mode]}
 
-以下の{len(criteria)}つの評価項目について、それぞれの点数はすでに確定しています
+    if jev_available:
+        scoring_instructions = f"""以下の{len(criteria)}つの評価項目について、それぞれの点数はすでに確定しています
 （採点は別のモデルが担当し、あなたはコメント執筆のみを担当します）。
 {criteria_lines}
 
 ユーザーメッセージ内の「各項目の確定スコア」セクションに記載された点数を踏まえ、
 なぜその点数になるのかが分かる具体的なコメントを日本語で書いてください。
-点数そのものを変更したり、独自に採点し直したりしないでください。
+点数そのものを変更したり、独自に採点し直したりしないでください。"""
+    else:
+        scoring_instructions = f"""審査は必ず以下の{len(criteria)}つの評価項目に沿って行い、他の項目を追加しないでください。
+各項目は{SCALE_MIN}〜{SCALE_MAX}点で採点し、採点根拠となる具体的なコメントを日本語で書いてください。
+{criteria_lines}"""
+
+    return f"""{MODE_INTROS[mode]}
+
+{scoring_instructions}
 
 {TONE_INSTRUCTIONS[tone]}
 改善提案は抽象的な精神論ではなく、実際にスライドや発表内容のどこをどう直すべきかが分かる具体的な内容にしてください。
@@ -110,6 +121,42 @@ def build_score_context(mode: str, jev_scores: dict[str, JevCriterionScore]) -> 
     return "# 各項目の確定スコア（変更不可。この点数を踏まえてコメントを書くこと）\n" + "\n".join(lines)
 
 
+T = TypeVar("T", bound=BaseModel)
+
+
+async def _call_claude(client: AsyncAnthropic, model: str, system_prompt: str, user_prompt: str, output_format: type[T]) -> T:
+    try:
+        response = await client.messages.parse(
+            model=model,
+            max_tokens=16000,
+            system=system_prompt,
+            messages=[{"role": "user", "content": user_prompt}],
+            output_format=output_format,
+        )
+    except anthropic.AuthenticationError as e:
+        logger.exception("Anthropic authentication failed")
+        raise HTTPException(status_code=400, detail="ANTHROPIC_API_KEYが正しくありません。") from e
+    except anthropic.BadRequestError as e:
+        logger.exception("Anthropic API rejected the request")
+        raise HTTPException(status_code=502, detail=f"Anthropic APIエラー: {e.message}") from e
+    except anthropic.RateLimitError as e:
+        logger.exception("Anthropic API rate limited")
+        raise HTTPException(
+            status_code=502,
+            detail="Anthropic APIの利用上限に達しました。しばらく待ってから再度お試しください。",
+        ) from e
+    except anthropic.APIConnectionError as e:
+        logger.exception("Anthropic API connection error")
+        raise HTTPException(status_code=502, detail="Anthropic APIへの接続に失敗しました。ネットワークを確認してください。") from e
+    except Exception as e:
+        logger.exception("AI review generation failed")
+        raise HTTPException(status_code=502, detail="AIレビューの生成に失敗しました。もう一度お試しください。") from e
+
+    if response.parsed_output is None:
+        raise HTTPException(status_code=502, detail="AIレビューの生成に失敗しました。もう一度お試しください。")
+    return response.parsed_output
+
+
 async def generate_review(
     slides: SlideExtractionResult | None,
     transcript: str | None,
@@ -131,61 +178,51 @@ async def generate_review(
         raise HTTPException(status_code=400, detail=f"不明なフィードバックトーンです: {tone}")
 
     pitch_content = build_user_prompt(slides, transcript)
-
-    # 1. Jev scores every criterion (fast, calibrated, deterministic-ish).
-    jev_scores = await score_with_jev(pitch_content, mode)
-
-    # 2. Claude writes the qualitative narrative around those fixed scores.
     client = AsyncAnthropic(api_key=settings.anthropic_api_key)
-    system_prompt = build_system_prompt(mode, tone)
-    user_prompt = pitch_content + "\n\n" + build_score_context(mode, jev_scores)
+    jev_available = bool(settings.typesafe_api_key)
 
-    try:
-        response = await client.messages.parse(
-            model=settings.claude_model,
-            max_tokens=16000,
-            system=system_prompt,
-            messages=[{"role": "user", "content": user_prompt}],
-            output_format=PitchReviewLLMOutput,
+    if jev_available:
+        # Jev scores every criterion (fast, calibrated); Claude only writes
+        # the qualitative narrative around those fixed scores.
+        jev_scores = await score_with_jev(pitch_content, mode)
+        system_prompt = build_system_prompt(mode, tone, jev_available=True)
+        user_prompt = pitch_content + "\n\n" + build_score_context(mode, jev_scores)
+        llm_output = await _call_claude(client, settings.claude_model, system_prompt, user_prompt, PitchReviewLLMOutput)
+
+        comments_by_id = {c.id: c.comment for c in llm_output.criterion_comments}
+        criteria_out = [
+            CriterionScore(
+                id=c["id"],
+                name=c["name"],
+                score=round(jev_scores[c["id"]].score_1_5),
+                max_score=SCALE_MAX,
+                comment=comments_by_id.get(c["id"], ""),
+                confidence=jev_scores[c["id"]].confidence,
+            )
+            for c in rubric_criteria
+        ]
+        overall_score = compute_overall_score([jev_scores[c["id"]].score_1_5 for c in rubric_criteria], mode)
+    else:
+        # No TYPESAFE_API_KEY configured — Claude scores and comments in one call.
+        logger.warning("TYPESAFE_API_KEY not set; falling back to Claude-only scoring")
+        system_prompt = build_system_prompt(mode, tone, jev_available=False)
+        llm_output = await _call_claude(
+            client, settings.claude_model, system_prompt, pitch_content, PitchReviewLLMOutputFallback
         )
-    except anthropic.AuthenticationError as e:
-        logger.exception("Anthropic authentication failed")
-        raise HTTPException(status_code=400, detail="ANTHROPIC_API_KEYが正しくありません。") from e
-    except anthropic.BadRequestError as e:
-        logger.exception("Anthropic API rejected the request")
-        raise HTTPException(status_code=502, detail=f"Anthropic APIエラー: {e.message}") from e
-    except anthropic.RateLimitError as e:
-        logger.exception("Anthropic API rate limited")
-        raise HTTPException(
-            status_code=502,
-            detail="Anthropic APIの利用上限に達しました。しばらく待ってから再度お試しください。",
-        ) from e
-    except anthropic.APIConnectionError as e:
-        logger.exception("Anthropic API connection error")
-        raise HTTPException(status_code=502, detail="Anthropic APIへの接続に失敗しました。ネットワークを確認してください。") from e
-    except Exception as e:
-        logger.exception("AI review generation failed")
-        raise HTTPException(status_code=502, detail="AIレビューの生成に失敗しました。もう一度お試しください。") from e
 
-    llm_output = response.parsed_output
-    if llm_output is None:
-        raise HTTPException(status_code=502, detail="AIレビューの生成に失敗しました。もう一度お試しください。")
-
-    comments_by_id = {c.id: c.comment for c in llm_output.criterion_comments}
-
-    criteria_out = [
-        CriterionScore(
-            id=c["id"],
-            name=c["name"],
-            score=round(jev_scores[c["id"]].score_1_5),
-            max_score=SCALE_MAX,
-            comment=comments_by_id.get(c["id"], ""),
-            confidence=jev_scores[c["id"]].confidence,
-        )
-        for c in rubric_criteria
-    ]
-
-    overall_score = compute_overall_score([jev_scores[c["id"]].score_1_5 for c in rubric_criteria], mode)
+        scores_by_id = {c.id: c for c in llm_output.criterion_scores}
+        criteria_out = [
+            CriterionScore(
+                id=c["id"],
+                name=c["name"],
+                score=scores_by_id[c["id"]].score if c["id"] in scores_by_id else SCALE_MIN,
+                max_score=SCALE_MAX,
+                comment=scores_by_id[c["id"]].comment if c["id"] in scores_by_id else "",
+                confidence=None,
+            )
+            for c in rubric_criteria
+        ]
+        overall_score = compute_overall_score([float(c.score) for c in criteria_out], mode)
 
     return PitchReviewResponse(
         overall_score=overall_score,

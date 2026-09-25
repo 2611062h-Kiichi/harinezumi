@@ -5,7 +5,7 @@
 - スライド抽出: `pdfplumber` (PDF) / `python-pptx` (PPTX)
 - 音声・動画の取得: ファイルアップロード、または直接リンク/YouTubeなどのURL（`yt-dlp`）
 - 音声書き起こし: OpenAI Whisper API
-- 採点: Jev（TypeSafe AI）— 7項目のルーブリックを構造化スコア＋確信度で判定
+- 採点: Jev（TypeSafe AI）— 7項目のルーブリックを構造化スコア＋確信度で判定（`TYPESAFE_API_KEY`未設定時はClaudeのみで採点する方式に自動フォールバック）
 - 審査コメント生成: Anthropic Claude API (`claude-sonnet-5`)
 - フロントエンド: React + Vite + TypeScript
 - バックエンド: FastAPI
@@ -16,9 +16,9 @@
 
 - Python 3.11 以上
 - Node.js 18 以上
-- Anthropic APIキー
-- OpenAI APIキー（音声・動画を使う場合）
-- TypeSafe (Jev) APIキー（採点機能を使う場合。[typesafe.ai](https://typesafe.ai) で発行。新規登録が一時停止中の場合があります）
+- Anthropic APIキー（必須）
+- OpenAI APIキー（音声・動画を使う場合に必須）
+- TypeSafe (Jev) APIキー（任意。[typesafe.ai](https://typesafe.ai) で発行。新規登録が一時停止中の場合があります。未設定でもClaudeのみでの採点にフォールバックして動作します）
 
 ## ローカルセットアップ
 
@@ -49,7 +49,8 @@ npm run dev
 # スライド抽出のみ（APIキー不要）
 curl -F "file=@sample.pptx" http://localhost:8000/api/slides/extract
 
-# ピッチ審査（要 ANTHROPIC_API_KEY・TYPESAFE_API_KEY、音声を渡す場合は OPENAI_API_KEY も）
+# ピッチ審査（要 ANTHROPIC_API_KEY。音声を渡す場合は OPENAI_API_KEY も。
+# TYPESAFE_API_KEY未設定時はClaudeのみでの採点にフォールバックします）
 curl -F "slide_file=@sample.pdf" -F "media_file=@sample.mp3" http://localhost:8000/api/review
 
 # 音声・動画をURLで渡す場合（ファイルの代わりに media_url を指定）
@@ -79,7 +80,7 @@ vercel deploy --prod
 |---|---|
 | `ANTHROPIC_API_KEY` | Anthropic APIキー |
 | `OPENAI_API_KEY` | OpenAI APIキー |
-| `TYPESAFE_API_KEY` | TypeSafe (Jev) APIキー |
+| `TYPESAFE_API_KEY` | TypeSafe (Jev) APIキー（未取得の場合は空のままでOK。Claudeのみでの採点にフォールバックします） |
 | `CLAUDE_MODEL` | `claude-sonnet-5` |
 | `WHISPER_MODEL` | `whisper-1` |
 | `MAX_SLIDE_MB` | `20` |

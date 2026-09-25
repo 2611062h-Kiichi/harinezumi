@@ -25,7 +25,7 @@ class CriterionScore(BaseModel):
     score: int = Field(ge=1, le=5)
     max_score: int = 5
     comment: str
-    confidence: float = Field(ge=0, le=1)
+    confidence: float | None = Field(default=None, ge=0, le=1)
 
 
 class ImprovementSuggestion(BaseModel):
@@ -54,12 +54,30 @@ class CriterionComment(BaseModel):
 
 
 class PitchReviewLLMOutput(BaseModel):
-    """Schema requested from Claude. Scores are decided by Jev beforehand and
-    given to Claude as context — Claude only writes the qualitative comment
-    justifying each already-decided score, plus the overall narrative fields."""
+    """Schema requested from Claude when Jev is available. Scores are decided
+    by Jev beforehand and given to Claude as context — Claude only writes the
+    qualitative comment justifying each already-decided score, plus the
+    overall narrative fields."""
 
     overall_summary: str
     criterion_comments: list[CriterionComment]
+    strengths: list[str]
+    improvements: list[ImprovementSuggestion]
+    one_line_verdict: str
+
+
+class CriterionScoreAndComment(BaseModel):
+    id: str
+    score: int = Field(ge=1, le=5)
+    comment: str
+
+
+class PitchReviewLLMOutputFallback(BaseModel):
+    """Schema requested from Claude when no TYPESAFE_API_KEY is configured —
+    Claude scores every criterion itself instead of using Jev."""
+
+    overall_summary: str
+    criterion_scores: list[CriterionScoreAndComment]
     strengths: list[str]
     improvements: list[ImprovementSuggestion]
     one_line_verdict: str
