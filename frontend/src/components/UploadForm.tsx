@@ -3,7 +3,7 @@ import type { FormEvent } from "react";
 import type { FeedbackTone, RubricMode } from "../types/review";
 
 const MAX_SLIDE_MB = 20;
-const MAX_MEDIA_MB = 300;
+const MAX_MEDIA_MB = 25; // Whisper's hard per-file limit
 
 const RUBRIC_MODE_OPTIONS: { id: RubricMode; label: string }[] = [
   { id: "business", label: "ビジネスコンテスト向け（起業の科学ベース）" },
@@ -147,7 +147,7 @@ export function UploadForm({ onSubmit }: Props) {
         </div>
 
         {mediaInputType === "file" ? (
-          <input type="file" accept="audio/*,video/*" onChange={handleMediaChange} />
+          <input type="file" accept=".mp3,.mp4,.mpeg,.mpga,.m4a,.wav,.webm" onChange={handleMediaChange} />
         ) : (
           <>
             <input

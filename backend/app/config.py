@@ -12,7 +12,7 @@ class Settings(BaseSettings):
     claude_model: str = "claude-sonnet-5"
     whisper_model: str = "whisper-1"
     max_slide_mb: int = 20
-    max_media_mb: int = 300
+    max_media_mb: int = 25  # Whisper's hard per-file limit
     cors_origin: str = "http://localhost:5173"
 
 

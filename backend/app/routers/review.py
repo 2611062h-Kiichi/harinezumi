@@ -6,7 +6,7 @@ from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 from app.config import get_settings
 from app.models.schemas import PitchReviewResponse, SlideExtractionResult, TranscriptionResult
 from app.rubric import DEFAULT_MODE, RUBRIC_MODES
-from app.services import audio_extraction, history, review_generator, slide_extractor
+from app.services import history, review_generator, slide_extractor
 from app.services.media_url import download_audio_from_url
 from app.services.review_generator import DEFAULT_TONE, TONE_LABELS
 from app.services.transcription import transcribe
@@ -15,7 +15,9 @@ from app.utils.file_validation import save_temp_upload, validate_upload
 router = APIRouter(prefix="/api")
 
 SLIDE_EXTS = {".pdf", ".pptx"}
-MEDIA_EXTS = {".mp3", ".wav", ".m4a", ".mp4", ".mov", ".mkv", ".webm", ".avi"}
+# Whisper accepts these directly (including video containers with an audio
+# track), so no local ffmpeg extraction step is needed.
+MEDIA_EXTS = {".mp3", ".mp4", ".mpeg", ".mpga", ".m4a", ".wav", ".webm"}
 
 
 @router.get("/health")
@@ -42,11 +44,6 @@ async def transcribe_media_endpoint(file: UploadFile = File(...)):
     tmp_dir = tempfile.mkdtemp()
     try:
         path = save_temp_upload(file, tmp_dir)
-        if audio_extraction.is_video_file(file.filename):
-            try:
-                path = audio_extraction.extract_audio(path, tmp_dir)
-            except RuntimeError as e:
-                raise HTTPException(status_code=500, detail=str(e)) from e
         return await transcribe(path, file.filename)
     finally:
         shutil.rmtree(tmp_dir, ignore_errors=True)
@@ -85,13 +82,7 @@ async def create_review(
         transcript = None
         if media_file is not None:
             media_path = save_temp_upload(media_file, tmp_dir)
-            media_filename = media_file.filename
-            if audio_extraction.is_video_file(media_filename):
-                try:
-                    media_path = audio_extraction.extract_audio(media_path, tmp_dir)
-                except RuntimeError as e:
-                    raise HTTPException(status_code=500, detail=str(e)) from e
-            transcription = await transcribe(media_path, media_filename)
+            transcription = await transcribe(media_path, media_file.filename)
             transcript = transcription.text
         elif media_url:
             media_path, media_filename = download_audio_from_url(media_url, tmp_dir, settings.max_media_mb)

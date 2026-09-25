@@ -1,11 +1,14 @@
 import os
-import shutil
 from urllib.parse import urlparse
 
 import yt_dlp
 from fastapi import HTTPException
 
 ALLOWED_SCHEMES = {"http", "https"}
+
+# Whisper accepts these directly, so the format selector is constrained to
+# them — no local ffmpeg conversion/merge step is ever needed.
+FORMAT_SELECTOR = "bestaudio[ext=m4a]/bestaudio[ext=webm]/bestaudio[ext=mp3]/best[ext=mp4]/best[ext=webm]"
 
 
 def _validate_url(url: str) -> None:
@@ -17,28 +20,14 @@ def _validate_url(url: str) -> None:
 def download_audio_from_url(url: str, out_dir: str, max_media_mb: int) -> tuple[str, str]:
     """Downloads audio from a URL — either a direct media file link or a
     yt-dlp-supported platform (YouTube, Vimeo, etc.) — and returns
-    (local_audio_path, display_filename)."""
+    (local_audio_path, display_filename). No local ffmpeg is required: the
+    format selector only picks formats Whisper accepts directly."""
     _validate_url(url)
-    if shutil.which("ffmpeg") is None:
-        raise HTTPException(
-            status_code=500,
-            detail=(
-                "ffmpegがインストールされていません。URLからの音声取得にはffmpegが必要です。"
-                "READMEの手順に従ってffmpegをインストールし、PATHに追加してから再度お試しください。"
-            ),
-        )
 
     out_template = os.path.join(out_dir, "url_media.%(ext)s")
     ydl_opts = {
-        "format": "bestaudio/best",
+        "format": FORMAT_SELECTOR,
         "outtmpl": out_template,
-        "postprocessors": [
-            {
-                "key": "FFmpegExtractAudio",
-                "preferredcodec": "mp3",
-                "preferredquality": "64",
-            }
-        ],
         "noplaylist": True,
         "quiet": True,
         "no_warnings": True,
@@ -48,15 +37,16 @@ def download_audio_from_url(url: str, out_dir: str, max_media_mb: int) -> tuple[
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=True)
+            audio_path = ydl.prepare_filename(info)
     except Exception as e:
         raise HTTPException(
             status_code=400,
             detail="URLから音声/動画を取得できませんでした。URLが正しいか、非公開になっていないか確認してください。",
         ) from e
 
-    audio_path = os.path.join(out_dir, "url_media.mp3")
     if not os.path.exists(audio_path):
-        raise HTTPException(status_code=500, detail="URLからの音声抽出に失敗しました。")
+        raise HTTPException(status_code=500, detail="URLからの音声取得に失敗しました。")
 
     display_name = (info or {}).get("title") or "url_media"
-    return audio_path, f"{display_name}.mp3"
+    ext = os.path.splitext(audio_path)[1]
+    return audio_path, f"{display_name}{ext}"

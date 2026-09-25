@@ -1,22 +1,26 @@
 # harinezumi — ピッチ審査を添削するAI
 
-ピッチ資料（PDF/PPTX）と、任意で発表の音声・動画をアップロードすると、AIが学生・大学主催のビジネスプランコンテストの審査員として、「起業の科学」（田所雅之）のリーンスタートアップ検証フレームワーク（ペインの質・CPF・PSF・市場定量分析・PMF兆候など）に基づく7項目のルーブリックに沿って採点・添削するローカルWebアプリです。
+ピッチ資料（PDF/PPTX）と、任意で発表の音声・動画をアップロードすると、AIが学生・大学主催のビジネスプランコンテストの審査員として、「起業の科学」（田所雅之）のリーンスタートアップ検証フレームワーク（ペインの質・CPF・PSF・市場定量分析・PMF兆候など）に基づく7項目のルーブリックに沿って採点・添削するWebアプリです。
 
 - スライド抽出: `pdfplumber` (PDF) / `python-pptx` (PPTX)
 - 音声・動画の取得: ファイルアップロード、または直接リンク/YouTubeなどのURL（`yt-dlp`）
 - 音声書き起こし: OpenAI Whisper API
-- 審査生成: Anthropic Claude API (`claude-sonnet-5`)
+- 採点: Jev（TypeSafe AI）— 7項目のルーブリックを構造化スコア＋確信度で判定
+- 審査コメント生成: Anthropic Claude API (`claude-sonnet-5`)
 - フロントエンド: React + Vite + TypeScript
 - バックエンド: FastAPI
+
+音声/動画は `.mp3` `.mp4` `.mpeg` `.mpga` `.m4a` `.wav` `.webm` のみ対応です（OpenAI Whisper APIが直接受け付ける形式のみを使うことで、ffmpeg等の外部バイナリを一切必要としない構成にしています。サーバーレス環境でも動作します）。
 
 ## 前提条件
 
 - Python 3.11 以上
 - Node.js 18 以上
-- ffmpeg（動画からの音声抽出、およびURLからの音声取得に必要。PATHに通しておくこと）
-- Anthropic APIキー、および音声を使う場合はOpenAI APIキー
+- Anthropic APIキー
+- OpenAI APIキー（音声・動画を使う場合）
+- TypeSafe (Jev) APIキー（採点機能を使う場合。[typesafe.ai](https://typesafe.ai) で発行。新規登録が一時停止中の場合があります）
 
-## セットアップ
+## ローカルセットアップ
 
 ### バックエンド
 
@@ -45,16 +49,73 @@ npm run dev
 # スライド抽出のみ（APIキー不要）
 curl -F "file=@sample.pptx" http://localhost:8000/api/slides/extract
 
-# ピッチ審査（要 ANTHROPIC_API_KEY、音声を渡す場合は OPENAI_API_KEY も）
+# ピッチ審査（要 ANTHROPIC_API_KEY・TYPESAFE_API_KEY、音声を渡す場合は OPENAI_API_KEY も）
 curl -F "slide_file=@sample.pdf" -F "media_file=@sample.mp3" http://localhost:8000/api/review
 
 # 音声・動画をURLで渡す場合（ファイルの代わりに media_url を指定）
 curl -F "slide_file=@sample.pdf" -F "media_url=https://example.com/pitch.mp4" http://localhost:8000/api/review
 ```
 
+## Vercelへのデプロイ（チーム共有用）
+
+フロントエンドとバックエンドをそれぞれ別のVercelプロジェクトとしてデプロイします。
+
+> **⚠️ 認証なしで公開する場合の注意:** このアプリには認証機能がありません。公開すると誰でも審査機能を使え、その都度あなたのAnthropic/OpenAI/TypeSafeのAPIクレジットが消費されます。URLを知っている人だけが使う前提で、共有範囲に注意してください。
+
+### 1. バックエンドをデプロイ
+
+Vercel CLIで `backend/` ディレクトリをプロジェクトルートとしてデプロイします。
+
+```bash
+npm install -g vercel   # 未インストールの場合
+cd backend
+vercel login
+vercel deploy --prod
+```
+
+デプロイ後、Vercelダッシュボードの当該プロジェクト → **Settings → Environment Variables** で以下を設定し、再デプロイしてください:
+
+| 変数名 | 値 |
+|---|---|
+| `ANTHROPIC_API_KEY` | Anthropic APIキー |
+| `OPENAI_API_KEY` | OpenAI APIキー |
+| `TYPESAFE_API_KEY` | TypeSafe (Jev) APIキー |
+| `CLAUDE_MODEL` | `claude-sonnet-5` |
+| `WHISPER_MODEL` | `whisper-1` |
+| `MAX_SLIDE_MB` | `20` |
+| `MAX_MEDIA_MB` | `25`（Whisperの25MB上限に合わせる。yt-dlp経由のダウンロードもこの値で制限されます） |
+| `CORS_ORIGIN` | 手順2でフロントエンドをデプロイした後のURL（例: `https://harinezumi-frontend.vercel.app`） |
+
+デプロイされたバックエンドのURL（例: `https://harinezumi-backend.vercel.app`）を控えておいてください。
+
+### 2. フロントエンドをデプロイ
+
+```bash
+cd frontend
+vercel login
+vercel deploy --prod
+```
+
+Vercelダッシュボードの当該プロジェクト → **Settings → Environment Variables** で以下を設定し、再デプロイしてください:
+
+| 変数名 | 値 |
+|---|---|
+| `VITE_API_BASE_URL` | 手順1で控えたバックエンドのURL |
+
+### 3. CORSを反映
+
+手順2で分かったフロントエンドのURLを、手順1のバックエンド側 `CORS_ORIGIN` に設定し直し、バックエンドを再デプロイしてください。
+
+これでフロントエンドのURLをチームメンバーに共有すれば、誰でもブラウザからアクセスできます。
+
+### 審査履歴について
+
+`backend/data/reviews/` へのJSON保存はVercel上のサーバーレス環境では永続化されません（ファイルシステムが再起動のたびにリセットされるため）。ローカル実行時のみ有効な機能です。
+
 ## 制約・今後の改善候補
 
 - 現状は同期リクエスト1回で処理するMVPです。処理中の進捗はフロントエンドの目安表示のみで、実際のステージとは連動していません（本格的な進捗表示にはポーリングやWebSocketが必要）。
-- Whisper APIのファイルサイズ上限（25MB相当）を超える長い録音は、事前に短く分割してください（自動分割は未実装）。
+- Whisper APIのファイルサイズ上限（25MB）を超える長い録音は、事前に短く分割してください（自動分割は未実装）。
 - 音声・動画のURL指定は `yt-dlp` で取得しています。対応可否はサイトによって異なり、非公開・年齢制限つきコンテンツなどは取得できない場合があります。著作権・利用規約上、指定者に権利のあるコンテンツのみ使用してください。
-- 認証・データベースは実装していません（審査結果は `backend/data/reviews/` にJSONとして保存されるのみ）。
+- 認証機能はありません。Vercelなどに公開する際は上記の注意事項を参照してください。
+- データベースは実装していません（審査結果はローカル実行時のみ `backend/data/reviews/` にJSONとして保存されます）。
