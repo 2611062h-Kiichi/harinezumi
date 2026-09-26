@@ -271,8 +271,8 @@
       "id": "T15",
       "task": "コンテスト観点モードの採点でスライド資料（PDF/PPTX）も使えるようにする: スライドのみ・音声のみ・両方のいずれでも採点でき、スライドの文字（スピーカーノートを含む）を書き起こしと合わせて Jev に渡す。音声のみのときは従来どおり書き起こしをそのまま渡す。壊れたファイルや文字の無いスライドは日本語の400。画面にスライドの選択欄を追加する",
       "owner": "ai",
-      "status": "review",
-      "passes": false,
+      "status": "done",
+      "passes": true,
       "evidence": [
         "evals/evidence/T15/pytest.log",
         "evals/evidence/T15/build.log",
@@ -282,6 +282,7 @@
         "evals/evidence/T15/screenshot-03-result-slides-only.png",
         "evals/evidence/T15/secret-scan.log",
         "evals/evidence/T15/check_tasks.log",
+        "evals/evidence/T15/review.md",
         "backend/app/services/contest_scorer.py",
         "backend/app/routers/contest.py",
         "backend/tests/test_contest_slides.py"
