@@ -1,0 +1,2 @@
+$ python evals/check_tasks.py
+結果: エラー 0 件 / 警告 0 件 / 完了 3/13 タスク

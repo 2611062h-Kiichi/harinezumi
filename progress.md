@@ -8,8 +8,8 @@
 ## 引き継ぎメモ（常に最新の状態に書き換える欄）
 - **最終更新**: 2026-09-26
 - **今の作業ブランチ**: `feature/contest-jev-questions`（土台: origin/feature/business-contest-rubric の b2dfe7f。upstream は未設定＝まだ push していない）
-- **最後に終わったこと**: T02 合格（`evals/evidence/T02/review.md`）
-- **次にやること**: T03（観点・Question・採点結果の型定義）
+- **最後に終わったこと**: T03 実装完了 → 評価役の検品待ち（status: review）
+- **次にやること**: T03 の検品 → 合格なら T04（Question 生成）か T05（Jev 採点）。どちらも T03 だけに依存。ID が小さい T04 から
 - **止まっていること / 人間待ち**: なし（基準タグ `harness-baseline` = 86bd2d7）
 - **注意**:
   - 依存関係は作業ブランチの内容で入れ直し済み（typesafe-sdk 0.7.1 の import、`npm run build` の成功を確認）
@@ -20,20 +20,21 @@
 ---
 
 ## 作業計画（計画役が書く・タスクごとに上書き）
-### T02 pytest 導入と既存機能の回帰テスト（AC-00a, AC-00c, AC-00d, AC-03, AC-04）
-1. `backend/requirements-dev.txt`（`-r requirements.txt` + `pytest`）と `backend/pytest.ini`（testpaths=tests, pythonpath=.）を追加
-2. `backend/tests/conftest.py`: 全テストで自動的に
-   - 外部への通信を禁止（localhost 以外への socket 接続でエラー）→ AC-04 をしくみで保証
-   - APIキーをダミー値に差し替え（Windows の環境変数や .env の本物のキーを使わない）＋ `get_settings` のキャッシュをクリア
-3. テストを書く（外部 API は偽物のクライアントに差し替え。非同期関数は `asyncio.run` で呼ぶので pytest-asyncio は不要）
-   - `test_rubric.py`: 合計点の計算（満点→100、最低点→20）、全項目が5段階、未知のモードはエラー
-   - `test_slide_extractor.py`: その場で作った PPTX から本文とノートを抽出、未対応の拡張子は 400
-   - `test_health.py`: `GET /api/health` が 200
-   - `test_jev_scorer.py`: Jev に渡す state と Score 型の questions、0始まり→1〜5への変換、キー無しで 400、認証エラーで日本語の 400
-   - `test_transcription.py`: Whisper の結果をそのまま返す、キー無しで 400、25MB 超で 400
-4. 証拠: `evals/evidence/T02/` に pytest.log（通常）、pytest-offline.log（通信禁止の確認テスト含む）、secret-scan.log、check_tasks.log（1行目に実行コマンド）
-- 変更予定ファイル: `backend/requirements-dev.txt`, `backend/pytest.ini`, `backend/tests/*`（アプリ本体のコードは変えない）
-- 承認が必要な操作: なし（pytest はテスト用の道具で、safety.md 1章の例外。実 API は呼ばない）
+### T03 観点・Question・採点結果の型定義（AC-00a, AC-00b, AC-00c, AC-00d, AC-05）
+1. `backend/app/models/contest.py` を新規作成（既存の schemas.py は触らない）。Pydantic の型:
+   - `ContestCriterion`: id（英数字・_・- の1〜40文字）、name（必須・前後の空白は除去・1〜100文字）、description（任意・〜1000文字）、max_points（1〜100 の整数）
+   - `ContestRubric`: contest_name（1〜100文字）、criteria（1〜15個、id の重複禁止）
+   - `JevScoreQuestion`: criterion_id、instructions（必須）、levels（ちょうど5個・低い順・空の段階は禁止）
+   - `QuestionSet`: rubric + questions。観点1つにつき Question 1つ（抜け・余分・重複・知らない id を禁止）
+   - `ContestCriterionResult`: criterion_id、name、max_points、jev_score（0〜4）、points（0〜配点）、confidence（0〜1）、low_confidence
+   - `ContestScoreResult`: contest_name、results、total_points、max_total_points、transcript、generated_at
+   - 定数: 段階数 5、観点の上限 15、確信度のしきい値 0.5（requirements.md FR-1/2/7 の値）
+   - 自作の検査のエラーメッセージは日本語にする
+2. `frontend/src/types/contest.ts` に同じ形の TypeScript の型を書く
+3. `backend/tests/test_contest_models.py`: 正しい入力が通ること＋AC-05 の各ケース（配点0、名前が空、観点16個、段階が5個でない、ID重複）と Question の抜け・余分がエラーになること
+4. 証拠: `evals/evidence/T03/` に pytest.log、build.log、secret-scan.log（`git add` 後に `git diff --cached`）、check_tasks.log（すべて1行目に実行コマンド）
+- 変更予定ファイル: 上の2つの新規ファイルとテスト（既存コードは変えない）
+- 承認が必要な操作: なし
 
 ---
 
@@ -78,6 +79,13 @@
 - 評価役の検品で **合格**（AC-00a/00c/00d/03/04 すべて○）。証拠: `evals/evidence/T02/review.md`。評価役はリポジトリの外で追加の遮断テスト8件（IP直指定、別のイベントループ、同期クライアント、モック無しの Whisper と Anthropic など）も実行し、すべて止まることを確認した
 - 評価役の指摘1への対応: 秘密情報チェックが safety.md の手順（`--cached`）と違い、まだ追加していない新規ファイルが検査対象外だった可能性があった → コミット全体を safety.md のパターンで検査し直した（`secret-scan-commit.log`。一致は検索コマンド自身の1行だけ）
 
+### 2026-09-26 T03 観点・Question・採点結果の型定義
+- 追加: `backend/app/models/contest.py`（ContestCriterion / ContestRubric / JevScoreQuestion / QuestionSet / ContestCriterionResult / ContestScoreResult と定数）、`frontend/src/types/contest.ts`（同じ形）、`backend/tests/test_contest_models.py`（29テスト）。既存コードは変更なし
+- 決めたこと: 観点の id は英数字・_・- の1〜40文字（Jev の questions の名前にそのまま使うため）。QuestionSet は「観点1つにつき Question 1つ」を型の段階で保証する（T04 で Claude の出力の抜け・余分を検出するのに使う）
+- つまずき: テスト用の補助関数で `levels or 既定値` と書き、空のリスト（段階0個）が既定値にすり替わってテストが1件失敗した → `is None` で判定するよう直した
+- `contest.ts` はまだどの画面からも使われていないが、型チェック（tsc）の対象に入っていることを確認した（build.log の末尾）
+- 証拠: `evals/evidence/T03/`（pytest.log: 52 passed、build.log、secret-scan.log、check_tasks.log）
+
 ---
 
 ## 学んだこと（改善の蓄積）
@@ -92,4 +100,5 @@
 - T01: `check_tasks.log` にも実行したコマンド行を入れる（T00 と同じ種類の指摘が2回目 → P1 として docs/roles.md に反映済み）
 - T02: 「テストが全部通った」だけでは安全装置が効いている証明にならない。わざと失敗するはずの状況（モック無しの呼び出し）を作って、本当に止まるか確かめる。今回それで遮断の抜け穴が見つかった
 - T02（評価役の指摘）: 秘密情報チェックは、必ず `git add` した後に safety.md どおり `git diff --cached` で行う（`git diff` だけだと新規ファイルが漏れる）
+- T03: テストの補助関数で `x or 既定値` と書くと、空のリストや 0 が既定値にすり替わる。「指定なし」は `is None` で判定する
 - T02: Windows の非同期通信は `socket.connect` を通らない。通信を止めるときは名前解決（getaddrinfo）と asyncio の接続も止める

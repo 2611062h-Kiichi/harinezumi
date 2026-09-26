@@ -1,0 +1,28 @@
+$ cd frontend && npm run build
+
+> harinezumi-frontend@0.0.1 build
+> tsc -b && vite build
+
+vite v5.4.21 building for production...
+transforming...
+✓ 40 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                   0.41 kB │ gzip:  0.32 kB
+dist/assets/index-CqHcD_Tj.css    2.76 kB │ gzip:  1.06 kB
+dist/assets/index-6XTnk_Jw.js   160.46 kB │ gzip: 53.39 kB
+✓ built in 691ms
+$ cd frontend && npx tsc -p . --listFilesOnly | grep src/
+C:/Users/tomo2/OneDrive/Desktop/エンジニアリング/ハリネズミ/frontend/src/types/review.ts
+C:/Users/tomo2/OneDrive/Desktop/エンジニアリング/ハリネズミ/frontend/src/components/UploadForm.tsx
+C:/Users/tomo2/OneDrive/Desktop/エンジニアリング/ハリネズミ/frontend/src/components/LoadingState.tsx
+C:/Users/tomo2/OneDrive/Desktop/エンジニアリング/ハリネズミ/frontend/src/components/CriterionCard.tsx
+C:/Users/tomo2/OneDrive/Desktop/エンジニアリング/ハリネズミ/frontend/src/components/StrengthsList.tsx
+C:/Users/tomo2/OneDrive/Desktop/エンジニアリング/ハリネズミ/frontend/src/components/ImprovementsList.tsx
+C:/Users/tomo2/OneDrive/Desktop/エンジニアリング/ハリネズミ/frontend/src/hooks/useCountUp.ts
+C:/Users/tomo2/OneDrive/Desktop/エンジニアリング/ハリネズミ/frontend/src/components/ReviewResult.tsx
+C:/Users/tomo2/OneDrive/Desktop/エンジニアリング/ハリネズミ/frontend/src/api/reviewApi.ts
+C:/Users/tomo2/OneDrive/Desktop/エンジニアリング/ハリネズミ/frontend/src/App.tsx
+C:/Users/tomo2/OneDrive/Desktop/エンジニアリング/ハリネズミ/frontend/src/main.tsx
+C:/Users/tomo2/OneDrive/Desktop/エンジニアリング/ハリネズミ/frontend/src/vite-env.d.ts
+C:/Users/tomo2/OneDrive/Desktop/エンジニアリング/ハリネズミ/frontend/src/types/contest.ts
