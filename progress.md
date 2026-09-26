@@ -8,14 +8,16 @@
 ## 引き継ぎメモ（常に最新の状態に書き換える欄）
 - **最終更新**: 2026-09-26
 - **今の作業ブランチ**: `feature/contest-jev-questions`（土台: origin/feature/business-contest-rubric の b2dfe7f。upstream は未設定＝まだ push していない）
-- **最後に終わったこと**: T06 実装完了 → 評価役の検品待ち（status: review）
-- **次にやること**: T06 の検品 → 合格なら T07（API: 観点→Questions、音声＋Questions→点数）
+- **最後に終わったこと**: T06 合格（`evals/evidence/T06/review.md`）
+- **次にやること**: T07（API: 観点→Questions、音声＋Questions→点数）
 - **人間待ち**: T14 を追加したので、確認後に `git tag -f harness-baseline`
 - **後続タスクへの申し送り**（T03 評価役の指摘より。該当タスクの作業計画に入れること）:
   - T05: Jev に渡す `Score` の `instructions` が観点名（または観点の内容）になっていることをテストで確かめる（採用された P2(b)）
   - T05: 型の `levels` を、Jev の `Score(criteria=...)` に名前を変えて渡す。`low_confidence` は必ず `confidence < LOW_CONFIDENCE_THRESHOLD` から計算する（型では確かめていない）
   - T07/T09: Claude が観点と違う順番で Question を返しても今はそのまま通る。API か画面で観点の順に並べ直すか決める（T04 評価役の指摘2）
   - T09: voice.md 2章「付け足した解釈は画面で人間に見せる」は、今の出力の型では解釈を区別できない。Question 確認画面（FR-3）で、観点の説明と Question を並べて見せるなどの方法を決める（T04 評価役の指摘1）
+  - T07: 受け付ける音声・動画の拡張子を決め、動画（mp4 など）でも Whisper に渡るかテストする（T06 評価役の指摘2）
+  - T07: `score_audio` に渡す一時ファイルの作成と削除は API 側の責任。エラーのときも一時ファイルが消えることをテストで確かめる（T06 評価役の指摘3）
   - T07: API で観点を受け取るとき、配点に `"20"`・`20.0`・`true` が通らないよう strict にするか決める（今の型は Pydantic の標準の検査なので受け付ける）
 - **注意**:
   - 依存関係は作業ブランチの内容で入れ直し済み（typesafe-sdk 0.7.1 の import、`npm run build` の成功を確認）
@@ -123,6 +125,8 @@
 - 変更: `score_transcript` の入口で、空・空白だけの書き起こしを 400 と日本語のエラーにする（Jev は呼ばない）。音声からでも文字の直接入力からでも同じ検査がかかる
 - 書き起こしの前後の空白も削らずにそのまま Jev に渡す（AC-08「そのまま入る」）。OPENAI_API_KEY が無いときは Whisper も Jev も呼ばずに止まる
 - 証拠: `evals/evidence/T06/`（pytest.log: 85 passed、secret-scan.log、check_tasks.log）。ログの1行目は、実行するコマンドと同じ変数から書き出した
+- 評価役の検品で **合格**（AC-00a/00c/00d/08 すべて○）。評価役はリポジトリの外のコピーでコードを7通り壊し（空判定を外す、Jev の前で strip する、transcribe を使わない など）、7通りとも既存のテストが失敗して検出することを確認した。1行目のコマンドも実際に使われたものと判断された（T05 の指摘は再発なし）
+- 評価役の指摘のうち T07 に関わるもの（動画の拡張子、一時ファイルの後片付け）は申し送りへ。小さな指摘（空白付きのテストが結果の transcript までは見ていない）は記録のみ
 
 ---
 

@@ -114,12 +114,13 @@
       "id": "T06",
       "task": "音声/動画 → 既存 transcribe() → Jev の state へ渡す流れを作り、空の書き起こしをエラーにする。モック Whisper でテストする",
       "owner": "ai",
-      "status": "review",
-      "passes": false,
+      "status": "done",
+      "passes": true,
       "evidence": [
         "evals/evidence/T06/pytest.log",
         "evals/evidence/T06/secret-scan.log",
         "evals/evidence/T06/check_tasks.log",
+        "evals/evidence/T06/review.md",
         "backend/app/services/contest_scorer.py",
         "backend/tests/test_contest_audio.py"
       ],
