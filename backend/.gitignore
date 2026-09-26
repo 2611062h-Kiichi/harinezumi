@@ -4,6 +4,7 @@ __pycache__/
 .venv/
 venv/
 data/reviews/*.json
+data/question_sets/*.json
 
 .vercel
 .pytest_cache/

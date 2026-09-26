@@ -150,8 +150,8 @@
       "id": "T08",
       "task": "Questions セットを名前付きで保存・一覧・読み込みする API とサービスを作る（backend/data/question_sets/）",
       "owner": "ai",
-      "status": "review",
-      "passes": false,
+      "status": "done",
+      "passes": true,
       "evidence": [
         "evals/evidence/T08/pytest.log",
         "evals/evidence/T08/secret-scan.log",
