@@ -7,6 +7,7 @@
 - 音声書き起こし: OpenAI Whisper API
 - 採点: Jev（TypeSafe AI）— 7項目のルーブリックを構造化スコア＋確信度で判定（`TYPESAFE_API_KEY`未設定時はClaudeのみで採点する方式に自動フォールバック）
 - 審査コメント生成: Anthropic Claude API (`claude-sonnet-5`)
+- 審査モードは「ビジネスコンテスト向け」「汎用ピッチ審査」の2種類。汎用モードでは「イベント内容」を自由記述すると、そのイベントに合わせた7項目ルーブリックをClaudeがその場で設計し、Jevでの採点に使用します（空欄の場合は既定の汎用ルーブリックを使用）
 - フロントエンド: React + Vite + TypeScript
 - バックエンド: FastAPI
 
