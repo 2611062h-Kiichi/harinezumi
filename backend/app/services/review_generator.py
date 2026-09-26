@@ -82,6 +82,12 @@ TONE_INSTRUCTIONS = {
 RUBRIC_GENERATION_SYSTEM_PROMPT = """あなたはピッチ・プレゼン審査のルーブリック設計の専門家です。
 与えられたイベントの内容に基づいて、そのイベントの審査に最適な7つの評価項目を設計してください。
 
+イベント内容が具体的な大会名・団体名など実在するイベントを指していると思われる場合は、
+web検索ツールを使って、その大会の公式な審査基準・募集要項・テーマを調べ、
+分かった実際の評価観点をルーブリックに反映してください。
+検索しても情報が見つからない場合や、イベント内容が一般的な説明（例:「学生向けハッカソン」）の場合は、
+無理に検索を繰り返さず、一般的な知見に基づいて設計してください。
+
 各評価項目には以下を含めてください:
 - name: 評価項目名（日本語、20文字程度）
 - levels: 1点から5点までの5段階の水準説明（低い順に5つ）。各文は「〜が示されている」のように、
@@ -93,13 +99,21 @@ RUBRIC_GENERATION_SYSTEM_PROMPT = """あなたはピッチ・プレゼン審査�
 最後の1項目には必ず、プレゼン自体の分かりやすさ・訴求力を評価する項目を含めてください。
 """
 
+RUBRIC_GENERATION_TOOLS = [
+    {"type": "web_search_20260209", "name": "web_search", "max_uses": 3},
+]
+
 
 async def generate_custom_rubric(client: AsyncAnthropic, model: str, event_context: str) -> list[dict]:
     """Asks Claude to design a 7-criterion rubric (name + 5-level descriptions
     each) tailored to a user-described event, in the same shape as the static
-    rubrics in app/rubric.py so downstream code can treat them uniformly."""
+    rubrics in app/rubric.py so downstream code can treat them uniformly.
+    Claude may use web search to look up a named real-world event's actual
+    judging criteria before designing the rubric."""
     user_prompt = f"イベント内容: {event_context}\n\nこのイベントに最適な評価ルーブリックを設計してください。"
-    result = await _call_claude(client, model, RUBRIC_GENERATION_SYSTEM_PROMPT, user_prompt, CustomRubricLLMOutput)
+    result = await _call_claude(
+        client, model, RUBRIC_GENERATION_SYSTEM_PROMPT, user_prompt, CustomRubricLLMOutput, tools=RUBRIC_GENERATION_TOOLS
+    )
     return [
         {"id": f"c{i + 1}", "name": c.name, "levels": c.levels}
         for i, c in enumerate(result.criteria)
@@ -164,7 +178,18 @@ def build_score_context(criteria: list[dict], jev_scores: dict[str, JevCriterion
 T = TypeVar("T", bound=BaseModel)
 
 
-async def _call_claude(client: AsyncAnthropic, model: str, system_prompt: str, user_prompt: str, output_format: type[T]) -> T:
+async def _call_claude(
+    client: AsyncAnthropic,
+    model: str,
+    system_prompt: str,
+    user_prompt: str,
+    output_format: type[T],
+    tools: list[dict] | None = None,
+) -> T:
+    kwargs = {}
+    if tools:
+        kwargs["tools"] = tools
+
     try:
         response = await client.messages.parse(
             model=model,
@@ -172,6 +197,7 @@ async def _call_claude(client: AsyncAnthropic, model: str, system_prompt: str, u
             system=system_prompt,
             messages=[{"role": "user", "content": user_prompt}],
             output_format=output_format,
+            **kwargs,
         )
     except anthropic.AuthenticationError as e:
         logger.exception("Anthropic authentication failed")
