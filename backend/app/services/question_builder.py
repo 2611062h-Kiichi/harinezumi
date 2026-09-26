@@ -16,6 +16,7 @@ from pydantic import BaseModel, ValidationError
 from app.config import get_settings
 from app.models.contest import JEV_LEVEL_COUNT, ContestRubric, QuestionSet
 from app.services.review_generator import _call_claude
+from app.utils.validation_messages import to_japanese
 
 logger = logging.getLogger(__name__)
 
@@ -68,10 +69,6 @@ def build_user_prompt(rubric: ContestRubric) -> str:
     )
 
 
-def _format_validation_error(error: ValidationError) -> str:
-    return " / ".join(e["msg"].removeprefix("Value error, ") for e in error.errors())
-
-
 async def generate_questions(rubric: ContestRubric) -> QuestionSet:
     settings = get_settings()
     if not settings.anthropic_api_key:
@@ -95,7 +92,7 @@ async def generate_questions(rubric: ContestRubric) -> QuestionSet:
         logger.warning("Claude returned questions that do not match the rubric: %s", e)
         raise HTTPException(
             status_code=502,
-            detail=f"AIが作ったQuestionが観点と合いませんでした。もう一度お試しください。（{_format_validation_error(e)}）",
+            detail=f"AIが作ったQuestionが観点と合いませんでした。もう一度お試しください。（{to_japanese(e)}）",
         ) from e
 
     # Claude may answer in any order; present questions in the organizer's order.

@@ -22,6 +22,12 @@ from app.services.transcription import transcribe
 
 logger = logging.getLogger(__name__)
 
+# Jev's score should land in [0, top_level]; this only absorbs float rounding
+# drift (e.g. 4.0000001). Anything further off is treated as a bad answer
+# rather than silently clamped, since it likely means Jev and the sent
+# criteria disagree on the level count.
+JEV_SCORE_DRIFT_TOLERANCE = 0.001
+
 
 def build_jev_questions(question_set: QuestionSet) -> dict[str, Score]:
     names = {c.id: c.name for c in question_set.rubric.criteria}
@@ -67,7 +73,18 @@ async def score_transcript(question_set: QuestionSet, transcript: str) -> Contes
             )
 
         top_level = len(levels_by_id[criterion.id]) - 1
-        # Jev's score is a probability-weighted average of levels; clamp float drift.
+        if answer.score < -JEV_SCORE_DRIFT_TOLERANCE or answer.score > top_level + JEV_SCORE_DRIFT_TOLERANCE:
+            logger.error(
+                "Jev returned an out-of-range score for criterion %s: %r (expected 0..%d)",
+                criterion.id,
+                answer.score,
+                top_level,
+            )
+            raise HTTPException(
+                status_code=502,
+                detail=f"Jevから観点「{criterion.name}」の異常な採点結果が返ってきました。もう一度お試しください。",
+            )
+        # Jev's score is a probability-weighted average of levels; clamp only float drift.
         jev_score = min(max(answer.score, 0.0), float(top_level))
         results.append(
             ContestCriterionResult(

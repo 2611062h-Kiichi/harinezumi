@@ -2,6 +2,8 @@ import asyncio
 import json
 from types import SimpleNamespace
 
+import anthropic
+import httpx2
 import pytest
 from fastapi import HTTPException
 
@@ -31,6 +33,7 @@ class FakeAnthropic:
 
     calls: list[dict] = []
     parsed_output = None
+    error: Exception | None = None
 
     def __init__(self, api_key):
         self.api_key = api_key
@@ -38,6 +41,8 @@ class FakeAnthropic:
 
     async def _parse(self, **kwargs):
         FakeAnthropic.calls.append({"api_key": self.api_key, **kwargs})
+        if FakeAnthropic.error is not None:
+            raise FakeAnthropic.error
         return SimpleNamespace(parsed_output=FakeAnthropic.parsed_output)
 
 
@@ -45,6 +50,7 @@ class FakeAnthropic:
 def fake_claude(monkeypatch):
     FakeAnthropic.calls = []
     FakeAnthropic.parsed_output = None
+    FakeAnthropic.error = None
     monkeypatch.setattr(question_builder, "AsyncAnthropic", FakeAnthropic)
     return FakeAnthropic
 
@@ -110,12 +116,50 @@ def test_duplicate_question_is_rejected(fake_claude):
 
 @pytest.mark.parametrize("count", [4, 6])
 def test_wrong_level_count_is_rejected(fake_claude, count):
-    detail = expect_502(fake_claude, [q("problem", levels=LEVELS[:1] * count), q("market")])
+    # Distinct sentences per level, not the same one repeated, so this
+    # exercises a realistic wrong-count answer rather than a degenerate one.
+    levels = [f"段階{i}の説明文" for i in range(count)]
+    detail = expect_502(fake_claude, [q("problem", levels=levels), q("market")])
     assert "ちょうど5個" in detail
+
+
+def test_blank_level_in_generated_question_gets_japanese_error(fake_claude):
+    detail = expect_502(fake_claude, [q("problem", levels=LEVELS[:4] + ["  "]), q("market")])
+    assert "入力してください" in detail
+    assert "段階5" in detail
+    # Not the raw Pydantic default ("String should have at least ...").
+    assert "String" not in detail
 
 
 def test_unparseable_claude_output_is_rejected(fake_claude):
     fake_claude.parsed_output = None
+
+    with pytest.raises(HTTPException) as excinfo:
+        generate()
+
+    assert excinfo.value.status_code == 502
+    assert excinfo.value.detail == question_builder.FAILURE_DETAIL
+
+
+def test_claude_connection_error_becomes_502(fake_claude):
+    # An SDK-level failure during the call itself (not just a malformed
+    # response), e.g. a dropped connection mid-request. _call_claude has a
+    # dedicated, more specific Japanese message for this SDK exception type.
+    fake_claude.error = anthropic.APIConnectionError(
+        request=httpx2.Request("POST", "https://api.anthropic.com/v1/messages")
+    )
+
+    with pytest.raises(HTTPException) as excinfo:
+        generate()
+
+    assert excinfo.value.status_code == 502
+    assert "接続に失敗" in excinfo.value.detail
+
+
+def test_claude_unexpected_exception_becomes_502_with_failure_detail(fake_claude):
+    # Any other SDK-level exception not specifically handled falls through to
+    # _call_claude's generic `except Exception`, using our failure_detail.
+    fake_claude.error = RuntimeError("something the SDK doesn't type")
 
     with pytest.raises(HTTPException) as excinfo:
         generate()

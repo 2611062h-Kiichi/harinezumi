@@ -8,8 +8,8 @@
 ## 引き継ぎメモ（常に最新の状態に書き換える欄）
 - **最終更新**: 2026-09-26
 - **今の作業ブランチ**: `feature/contest-jev-questions`（土台: origin/feature/business-contest-rubric の b2dfe7f。upstream は未設定＝まだ push していない）
-- **最後に終わったこと**: T13 合格（`evals/evidence/T13/review.md`）
-- **次にやること**: T14（採用済みのP4・P5の反映）。T11（人間承認の実API通し確認）はサンプル音声待ちで保留中
+- **最後に終わったこと**: T14 実装完了 → 評価役の検品待ち（status: review）
+- **次にやること**: T14 の検品 → 合格すれば AI が着手できるタスクは一区切り。T11（人間承認の実API通し確認）はサンプル音声待ちで保留中
 - **人間待ち**: なし（人間が T14 を確認して基準タグを更新済み: `harness-baseline` = f901d4b）
 - **後続タスクへの申し送り**（T03 評価役の指摘より。該当タスクの作業計画に入れること）:
   - T05: Jev に渡す `Score` の `instructions` が観点名（または観点の内容）になっていることをテストで確かめる（採用された P2(b)）
@@ -28,6 +28,15 @@
 ---
 
 ## 作業計画（計画役が書く・タスクごとに上書き）
+### T14 採用された提案 P4・P5 の反映（AC-00a, AC-00c, AC-00d, AC-06, AC-07）
+1. P4(a) Claude の SDK 例外 → 502: `test_question_builder.py` の `FakeAnthropic` に `error` を追加し、`anthropic.APIConnectionError` を送出するテストを足す（`review_generator._call_claude` の `except anthropic.APIConnectionError` / `except Exception` が既に502にしているので、テストの追加のみ）
+2. P4(b) 段階が空のときのエラーを日本語に: `question_builder._format_validation_error`（Pydantic の生メッセージを英語のまま繋げていた）を、既に `contest.py` の入力チェックで使っている `app.utils.validation_messages.to_japanese` に差し替える（重複コードの統一でもある）。テストで、段階が空のQuestionをClaudeが返したときの502メッセージが日本語（「Question1の段階5: 入力してください」）になることを確認
+3. P4(c) 段階数テストの入力を別々の文に: `test_wrong_level_count_is_rejected` の `LEVELS[:1] * count`（同じ文の繰り返し）を、`[f"段階{i}" for i in range(count)]`（別々の文）に変える
+4. P5 Jev の score が大きく外れたら502: `contest_scorer.py` に許容誤差の定数（0.001。浮動小数点の誤差は吸収し、それを超えるずれは異常値として扱う）を追加。範囲外だが誤差の範囲内ならこれまで通り0〜4に収め、誤差を超えていたらログを残して502（観点名入りの日本語エラー）にする。テストで、既存の「わずかな誤差」ケース（0.0000001）は今まで通り成功し、「大きく外れた」ケース（5.0, -1.0）は502になることを確認
+5. 証拠: `evals/evidence/T14/` に pytest.log、secret-scan.log、check_tasks.log
+- 変更予定ファイル: `test_question_builder.py`（追記）、`question_builder.py`（`_format_validation_error` を `to_japanese` に置き換え）、`test_contest_scorer.py`（既存テスト1件の入力変更＋新規テスト追加）、`contest_scorer.py`（範囲外判定の追加）
+- 承認が必要な操作: なし。実 API は呼ばない
+
 ### T13 採用された提案 P2(a)・P3 の反映（AC-00a, AC-00c, AC-00d, AC-03, AC-05）
 - ユーザーの指示: サンプル音声の準備待ちの間に、T11（実API通し確認・要承認）を後回しにして、依存関係が満たされている T13 を先に進める（T14 は依頼にはあるが T13 を先に着手）
 1. PDF のスライド抽出テスト（P2(a)）: `backend/requirements-dev.txt` に `reportlab` を追加（PDF書き出し用。テスト専用の道具なので docs/safety.md の「テスト用のpytestなど」の例外に該当し、承認なしで進める）。`test_slide_extractor.py` に、reportlab で作った2ページのPDFから `extract_from_pdf` がページ番号・本文を正しく取り出すテストと、文字の無いページが空文字になるテストを追加
@@ -89,6 +98,7 @@
 ---
 
 ## 提案（AI からの変更提案。人間が採用したら該当ファイルに反映する）
+- **P6（2026-09-27、T14 の全体テスト実行中に発見）**: `question_set_storage.list_all()` の並び順が `os.path.getmtime`（ファイルの更新時刻）に頼っているため、同じミリ秒に2件保存されると稀に順序が入れ替わる（`test_list_returns_newest_first_with_summary_fields` が数百回に1回程度失敗しうる）。`saved_at`（保存内容に持たせている日時）で比べるように直せば確実。低頻度・低リスクの品質向上。（未採用）
 - **P5（2026-09-26、T05 評価役の指摘2より）**: Jev の score が 0〜4 から大きく外れた（例: 0.001 より大きくずれた）ときは、黙って収めずにログを残して 502 にする。わずかな誤差だけ収める。→ **採用（2026-09-26、人間「提案2つを採用します」）。T14 として tasks.json に追加**
 - **P4（2026-09-26、T04 評価役の指摘3〜5より）**: (a) Claude の呼び出し中に SDK が例外を出した場合も 502 になることをテストで確かめる。(b) 段階が空のときのエラーの括弧内が英語（Pydantic 標準の文）になるので、日本語にする（NFR-3）。(c) 段階数のテストの入力を別々の文にする。どれも小さな変更。→ **採用（2026-09-26、人間「提案2つを採用します」）。T14 として tasks.json に追加**
 - **P3（2026-09-26、T03 評価役の指摘1・5より）**: (a) AC-05 のテストを「エラーになるか」だけでなく「どの項目のエラーか」まで確かめるようにする（将来ほかの制約を足したとき、別の理由で通ってしまうのを防ぐ）。(b) 採点結果の `name` と `contest_name` も空文字を禁止する。どちらも小さな変更。→ **採用（2026-09-26、人間「提案の2つを採用します」）。T13 として tasks.json に追加**
@@ -229,6 +239,14 @@
 - P3(b): `ContestCriterionResult.name` と `ContestScoreResult.contest_name` を `str` から `RequiredText`（`ContestCriterion.name` と同じ制約）に変更し、空文字・空白のみを拒否するテストを追加
 - 証拠: `evals/evidence/T13/`（pytest.log: 138 passed（既存132＋新規6）、secret-scan.log、check_tasks.log）
 - 評価役の検品で **合格**（AC-00a/00c/00d/03/05 すべて○）。評価役はリポジトリの外で PDF テストを直接実行してファイルが実在しテキストが読めることを確認し、AC-05 の強化されたテストを3パターン意図的に緩めて（誤った項目でエラーにする／型変更を戻す／段階0個のメッセージを変える）すべて検出されることを確認した。合否に影響しない指摘はなし
+
+### 2026-09-27 T14 採用された提案 P4・P5 の反映
+- P4(a): `test_question_builder.py` の `FakeAnthropic` に例外を投げられるようにし、2種類のテストを追加。(1) `anthropic.APIConnectionError`（既存の専用 except 節）→ 502＋「接続に失敗」を含む日本語文言。(2) 型の無い `RuntimeError`（generic な except Exception 節）→ 502＋`FAILURE_DETAIL`。最初 (1) だけを実装し `FAILURE_DETAIL` と一致するはずと書いたが、`_call_claude` の専用 except 節はより具体的な別の日本語文言を返すことが分かり、2つに分けて書き直した
+- P4(b): `question_builder.py` の `_format_validation_error`（Pydantic の生メッセージを英語のまま繋げていた）を削除し、`contest.py` の入力チェックで既に使っている `app.utils.validation_messages.to_japanese` に統一。段階が空のQuestionをClaudeが返したときのエラーが「Question1の段階5: 入力してください」のような日本語になることをテストで確認
+- P4(c): `test_wrong_level_count_is_rejected` の入力を、同じ文の繰り返し（`LEVELS[:1] * count`）から段階ごとに別々の文（`f"段階{i}の説明文"`）に変更
+- P5: `contest_scorer.py` に許容誤差 `JEV_SCORE_DRIFT_TOLERANCE = 0.001` を追加。範囲外だが誤差の範囲内ならこれまで通り0〜4に収め、それを超えたらログを残して502（観点名入りの日本語エラー）にする。既存の「わずかな誤差」テスト（0.0000001）は許容範囲内なので変更なし、「大きく外れた」ケース（5.0, -1.0, 4.5, -0.5）が502になるテストを追加
+- 気づいたこと（このタスクの範囲外・今回は直していない）: バックエンドの全テストを複数回流したところ、1回だけ `test_question_set_storage.py::test_list_returns_newest_first_with_summary_fields` が失敗した。2件を連続保存したときの一覧の並び順を `os.path.getmtime`（ファイルの更新時刻）で決めているため、同じミリ秒に保存されるとまれに順序が入れ替わる。3回連続で単体実行、3回連続で全体実行するとすべて成功したので頻度は低いが、直すなら保存時刻を保存内容（`saved_at`）で比べる方が確実。提案 P6 として記録
+- 証拠: `evals/evidence/T14/`（pytest.log: 145 passed、secret-scan.log、check_tasks.log）
 
 ---
 

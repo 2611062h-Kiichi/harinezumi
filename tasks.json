@@ -252,9 +252,17 @@
       "id": "T14",
       "task": "採用された提案 P4・P5 を反映する: Claude 呼び出し中の SDK 例外が 502 になるテストを追加、段階が空のときのエラーを日本語にする、段階数のテストの入力を別々の文にする、Jev の score が 0〜4 から大きく外れたらログを残して 502 にする（わずかな誤差だけ範囲内に収める）",
       "owner": "ai",
-      "status": "todo",
+      "status": "review",
       "passes": false,
-      "evidence": [],
+      "evidence": [
+        "evals/evidence/T14/pytest.log",
+        "evals/evidence/T14/secret-scan.log",
+        "evals/evidence/T14/check_tasks.log",
+        "backend/app/services/question_builder.py",
+        "backend/app/services/contest_scorer.py",
+        "backend/tests/test_question_builder.py",
+        "backend/tests/test_contest_scorer.py"
+      ],
       "dependencies": ["T04", "T05"],
       "acceptance": ["AC-00a", "AC-00c", "AC-00d", "AC-06", "AC-07"]
     }

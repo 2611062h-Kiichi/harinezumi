@@ -137,6 +137,17 @@ def test_slightly_out_of_range_jev_scores_are_clamped(fake_jev):
     assert by_id["market"].points == 0.0
 
 
+@pytest.mark.parametrize("bad_score", [5.0, -1.0, 4.5, -0.5])
+def test_significantly_out_of_range_jev_score_is_rejected(fake_jev, bad_score):
+    fake_jev.answers = {"problem": (bad_score, 0.9), "market": (2.0, 0.9)}
+
+    with pytest.raises(HTTPException) as excinfo:
+        score()
+
+    assert excinfo.value.status_code == 502
+    assert "課題の明確さ" in excinfo.value.detail
+
+
 def test_missing_jev_answer_is_rejected(fake_jev):
     fake_jev.answers = {"problem": (3.0, 0.8)}
 
