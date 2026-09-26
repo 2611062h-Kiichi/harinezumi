@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import get_settings
+from app.routers.contest import router as contest_router
 from app.routers.review import router as review_router
 
 settings = get_settings()
@@ -17,3 +18,4 @@ app.add_middleware(
 )
 
 app.include_router(review_router)
+app.include_router(contest_router)

@@ -88,7 +88,7 @@ async def generate_questions(rubric: ContestRubric) -> QuestionSet:
     )
 
     try:
-        return QuestionSet.model_validate(
+        question_set = QuestionSet.model_validate(
             {"rubric": rubric, "questions": [q.model_dump() for q in generated.questions]}
         )
     except ValidationError as e:
@@ -97,3 +97,8 @@ async def generate_questions(rubric: ContestRubric) -> QuestionSet:
             status_code=502,
             detail=f"AIが作ったQuestionが観点と合いませんでした。もう一度お試しください。（{_format_validation_error(e)}）",
         ) from e
+
+    # Claude may answer in any order; present questions in the organizer's order.
+    position = {c.id: i for i, c in enumerate(rubric.criteria)}
+    question_set.questions.sort(key=lambda q: position[q.criterion_id])
+    return question_set

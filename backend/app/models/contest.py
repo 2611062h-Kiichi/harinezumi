@@ -24,7 +24,8 @@ class ContestCriterion(BaseModel):
     id: CriterionId
     name: Annotated[RequiredText, StringConstraints(max_length=100)]
     description: Annotated[str, StringConstraints(strip_whitespace=True, max_length=1000)] = ""
-    max_points: int = Field(ge=1, le=100)
+    # strict: reject "20", 20.0 and true so a typo in the UI cannot slip through.
+    max_points: int = Field(ge=1, le=100, strict=True)
 
 
 class ContestRubric(BaseModel):

@@ -8,8 +8,8 @@
 ## 引き継ぎメモ（常に最新の状態に書き換える欄）
 - **最終更新**: 2026-09-26
 - **今の作業ブランチ**: `feature/contest-jev-questions`（土台: origin/feature/business-contest-rubric の b2dfe7f。upstream は未設定＝まだ push していない）
-- **最後に終わったこと**: T06 合格（`evals/evidence/T06/review.md`）
-- **次にやること**: T07（API: 観点→Questions、音声＋Questions→点数）
+- **最後に終わったこと**: T07 実装完了 → 評価役の検品待ち（status: review）
+- **次にやること**: T07 の検品 → 合格なら T08（Questions セットの保存・一覧・読み込み）
 - **人間待ち**: なし（人間が T14 を確認して基準タグを更新済み: `harness-baseline` = f901d4b）
 - **後続タスクへの申し送り**（T03 評価役の指摘より。該当タスクの作業計画に入れること）:
   - T05: Jev に渡す `Score` の `instructions` が観点名（または観点の内容）になっていることをテストで確かめる（採用された P2(b)）
@@ -28,13 +28,20 @@
 ---
 
 ## 作業計画（計画役が書く・タスクごとに上書き）
-### T06 音声 → 文字起こし → Jev の state（AC-00a, AC-00c, AC-00d, AC-08）
-1. `backend/app/services/contest_scorer.py` に `score_audio(question_set, audio_path, filename)` を追加
-   - 既存の `transcribe()`（Whisper）で文字起こしし、その文章を **そのまま** `score_transcript` に渡す（Jev の state になる）
-2. `score_transcript` の入口で、空・空白だけの書き起こしを 400 と日本語のエラーにする（FR-4）。Jev は呼ばない。音声からでも文字の直接入力からでも同じ検査がかかるように、ここに置く
-3. `backend/tests/test_contest_audio.py`（Whisper と Jev は偽物）: Whisper の出力が Jev の state にそのまま入る、Whisper に音声ファイルの中身が渡る、書き起こしが空／空白だけ → 400 で Jev を呼ばない、OPENAI_API_KEY が無い → 400 で Whisper も Jev も呼ばない、結果の transcript が書き起こし文
-4. 証拠: `evals/evidence/T06/` に pytest.log、secret-scan.log（`git add` 後に `--cached`）、check_tasks.log。**1行目のコマンドは、実行するコマンドと同じ変数から書き出す**（T05 の P1 違反の再発防止）
-- 変更予定ファイル: `contest_scorer.py`、新規テスト
+### T07 API: 観点→Questions、音声＋Questions→点数（AC-00a, AC-00c, AC-00d, AC-09）
+1. `backend/app/routers/contest.py` を新規作成し、`main.py` に登録する
+   - `POST /api/contest/questions`: JSON で観点（ContestRubric）を受け取り、`generate_questions` の結果（QuestionSet）を返す
+   - `POST /api/contest/score`: multipart で `media_file`（音声/動画）と `question_set`（QuestionSet の JSON 文字列）を受け取り、`score_audio` の結果（ContestScoreResult）を返す
+   - 入力の検査は自分で行い、形の誤りは **400 と日本語のエラー**にする（FastAPI 標準の 422・英語のエラーにしない。AC-09「不正な観点400」、NFR-3）。ファイルや question_set が無いときも 400
+2. Pydantic の英語のエラーを日本語に直す小さな関数 `backend/app/utils/validation_messages.py`（どの観点のどの項目か＋何が悪いか。例:「観点2の配点: 1以上にしてください」）
+3. 申し送りへの対応（ここで決めること）:
+   - 配点は **厳密に整数だけ** 受け付ける（`"20"`・`20.0`・`true` は 400）。`contest.py` の `max_points` を strict にする（T03 の型に1か所追加）
+   - Question の並び順: `generate_questions` が返す前に **観点の順に並べ直す**（T04 の指摘2）
+   - 受け付ける音声・動画の拡張子は既存の審査と同じ（mp3/mp4/mpeg/mpga/m4a/wav/webm）。**mp4 のテスト** を入れる（T06 の指摘2）
+   - 一時ファイル: 保存用の一時フォルダは成功でもエラーでも必ず消す。**エラーのときも消えるテスト** を入れる（T06 の指摘3）
+4. `backend/tests/test_contest_api.py`（TestClient。Claude・Whisper・Jev は偽物）: 各 API の成功 200、不正な観点 400（日本語）、配点 "20" 400、壊れた JSON 400、キー未設定の日本語エラー、対応外の拡張子 400、question_set の観点と Question の食い違い 400、mp4、一時フォルダの後片付け（成功・エラー両方）
+5. 証拠: `evals/evidence/T07/` に pytest.log、secret-scan.log、check_tasks.log（1行目は実行コマンドと同じ変数から）
+- 変更予定ファイル: 新規 `routers/contest.py`・`utils/validation_messages.py`・テスト、`main.py`（登録1行）、`models/contest.py`（strict 1か所）、`services/question_builder.py`（並べ直し）
 - 承認が必要な操作: なし（実 API は呼ばない）
 
 ---
@@ -127,6 +134,17 @@
 - 証拠: `evals/evidence/T06/`（pytest.log: 85 passed、secret-scan.log、check_tasks.log）。ログの1行目は、実行するコマンドと同じ変数から書き出した
 - 評価役の検品で **合格**（AC-00a/00c/00d/08 すべて○）。評価役はリポジトリの外のコピーでコードを7通り壊し（空判定を外す、Jev の前で strip する、transcribe を使わない など）、7通りとも既存のテストが失敗して検出することを確認した。1行目のコマンドも実際に使われたものと判断された（T05 の指摘は再発なし）
 - 評価役の指摘のうち T07 に関わるもの（動画の拡張子、一時ファイルの後片付け）は申し送りへ。小さな指摘（空白付きのテストが結果の transcript までは見ていない）は記録のみ
+
+### 2026-09-26 T07 API（観点→Questions、音声＋Questions→点数）
+- 追加: `backend/app/routers/contest.py`（`POST /api/contest/questions`、`POST /api/contest/score`）、`backend/app/utils/validation_messages.py`（Pydantic の英語のエラーを「観点2の配点: 1以上にしてください」のような日本語に直す）、`backend/tests/test_contest_api.py`（19テスト）
+- 変更: `main.py` に登録1行、`models/contest.py` の配点を strict に、`question_builder.py` で Question を観点の順に並べ直す
+- 申し送りへの対応（決めたこと）:
+  - 配点は厳密に整数だけ受け付ける（`"20"`・`20.0`・`true` は 400「整数で入力してください」）
+  - Claude が別の順で返しても、Question は観点の順に並べ直して返す
+  - 受け付ける拡張子は既存の審査と同じ（mp3/mp4/mpeg/mpga/m4a/wav/webm）。mp4 が Whisper まで届くテストあり
+  - 一時フォルダは成功でもエラー（キー未設定・空の書き起こし）でも消える。テストあり
+- 入力ミスは FastAPI 標準の 422（英語）ではなく、400 と日本語のエラーで返す。ファイルや Question が無いときも 400
+- 証拠: `evals/evidence/T07/`（pytest.log: 104 passed、secret-scan.log、check_tasks.log）
 
 ---
 
