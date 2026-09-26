@@ -11,6 +11,7 @@ from decimal import ROUND_HALF_UP, Decimal
 from fastapi import HTTPException
 from typesafe_sdk import Score
 
+from app.config import get_settings
 from app.models.contest import (
     LOW_CONFIDENCE_THRESHOLD,
     ContestCriterionResult,
@@ -66,6 +67,29 @@ def _has_slide_text(slides: SlideExtractionResult) -> bool:
     return any(s.text.strip() or s.notes.strip() for s in slides.slides)
 
 
+def check_slide_limits(slides: SlideExtractionResult) -> None:
+    """Rejects decks too large to be a pitch, before any paid API is called."""
+    settings = get_settings()
+    pages = len(slides.slides)
+    if pages > settings.max_contest_slide_pages:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"スライド資料のページ数が多すぎます（{pages}ページ、上限{settings.max_contest_slide_pages}ページ）。"
+                "発表で使うページだけにしてから、もう一度お試しください。"
+            ),
+        )
+    chars = sum(len(s.text) + len(s.notes) for s in slides.slides)
+    if chars > settings.max_contest_slide_chars:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"スライド資料の文字数が多すぎます（{chars:,}文字、上限{settings.max_contest_slide_chars:,}文字。"
+                "スピーカーノートを含みます）。発表で使うページだけにするか、ノートを短くしてから、もう一度お試しください。"
+            ),
+        )
+
+
 async def score_materials(
     question_set: QuestionSet,
     slides: SlideExtractionResult | None = None,
@@ -74,11 +98,13 @@ async def score_materials(
     """Scores a pitch from its slides, its transcript, or both."""
     if slides is None and transcript is None:
         raise HTTPException(status_code=400, detail="スライド資料、または発表の音声・動画を指定してください。")
+    if slides is not None:
+        check_slide_limits(slides)
     if transcript is not None and not transcript.strip():
-        raise HTTPException(
-            status_code=400,
-            detail="発表の文字起こしが空です。音声に話し声が入っているか確認して、もう一度お試しください。",
-        )
+        detail = "発表の文字起こしが空です。音声に話し声が入っているか確認して、もう一度お試しください。"
+        if slides is not None and _has_slide_text(slides):
+            detail += "スライド資料だけを選び直して採点すれば、スライドだけで採点することもできます。"
+        raise HTTPException(status_code=400, detail=detail)
     if transcript is None and not _has_slide_text(slides):
         raise HTTPException(
             status_code=400,
@@ -151,5 +177,8 @@ async def score_audio(
     slides: SlideExtractionResult | None = None,
 ) -> ContestScoreResult:
     """Transcribes the pitch with Whisper and scores it (with slides, if any) with Jev."""
+    if slides is not None:
+        # Before transcription, so an oversized deck doesn't cost a Whisper call.
+        check_slide_limits(slides)
     transcription = await transcribe(audio_path, filename)
     return await score_materials(question_set, slides=slides, transcript=transcription.text)

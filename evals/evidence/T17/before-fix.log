@@ -1,0 +1,13 @@
+$ cd backend && PYTHONIOENCODING=utf-8 .venv/Scripts/python -m pytest -q -p no:cacheprovider tests/test_contest_slide_limits.py tests/test_slide_extractor.py   # 修正前のアプリのコード（git stash で一時的に戻した状態）
+                    # this is the current error
+FAILED tests/test_contest_slide_limits.py::test_default_limits_allow_a_60_page_deck_and_reject_61
+FAILED tests/test_contest_slide_limits.py::test_blank_transcript_with_readable_slides_suggests_slides_only
+FAILED tests/test_contest_slide_limits.py::test_api_silent_audio_with_slides_suggests_slides_only
+FAILED tests/test_slide_extractor.py::test_extracts_text_inside_tables_and_nested_groups
+FAILED tests/test_slide_extractor.py::test_empty_table_cells_are_skipped - As...
+ERROR tests/test_contest_slide_limits.py::test_page_limit_is_inclusive - Attr...
+ERROR tests/test_contest_slide_limits.py::test_char_limit_counts_notes_and_is_inclusive
+ERROR tests/test_contest_slide_limits.py::test_oversized_deck_is_rejected_before_whisper_is_called
+ERROR tests/test_contest_slide_limits.py::test_deck_within_limits_still_scores_with_audio
+ERROR tests/test_contest_slide_limits.py::test_api_oversized_pptx_is_japanese_400_without_whisper
+5 failed, 6 passed, 5 errors in 2.77s

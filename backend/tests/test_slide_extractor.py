@@ -84,3 +84,39 @@ def test_unsupported_extension_is_rejected(tmp_path):
         extract_slides(str(path), "pitch.key")
 
     assert excinfo.value.status_code == 400
+
+
+def test_extracts_text_inside_tables_and_nested_groups(tmp_path):
+    from pptx.util import Inches
+
+    path = tmp_path / "shapes.pptx"
+    presentation = Presentation()
+    slide = presentation.slides.add_slide(presentation.slide_layouts[6])  # blank
+    table = slide.shapes.add_table(2, 2, Inches(1), Inches(1), Inches(4), Inches(1)).table
+    table.cell(0, 0).text = "指標"
+    table.cell(0, 1).text = "数値"
+    table.cell(1, 0).text = "市場規模"
+    table.cell(1, 1).text = "3000億円"
+    group = slide.shapes.add_group_shape()
+    group.shapes.add_textbox(Inches(1), Inches(3), Inches(2), Inches(1)).text_frame.text = "グループ内の文字"
+    inner = group.shapes.add_group_shape()
+    inner.shapes.add_textbox(Inches(1), Inches(4), Inches(2), Inches(1)).text_frame.text = "入れ子のグループ内の文字"
+    presentation.save(path)
+
+    text = extract_slides(str(path), "shapes.pptx").slides[0].text
+
+    assert text.splitlines() == ["指標 | 数値", "市場規模 | 3000億円", "グループ内の文字", "入れ子のグループ内の文字"]
+
+
+def test_empty_table_cells_are_skipped(tmp_path):
+    from pptx.util import Inches
+
+    path = tmp_path / "sparse.pptx"
+    presentation = Presentation()
+    slide = presentation.slides.add_slide(presentation.slide_layouts[6])
+    table = slide.shapes.add_table(2, 3, Inches(1), Inches(1), Inches(4), Inches(1)).table
+    table.cell(0, 0).text = "A"
+    table.cell(0, 2).text = "C"
+    presentation.save(path)
+
+    assert extract_slides(str(path), "sparse.pptx").slides[0].text == "A | C"

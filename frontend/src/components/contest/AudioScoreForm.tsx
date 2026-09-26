@@ -6,6 +6,9 @@ import type { QuestionSet } from "../../types/contest";
 // (backend/app/routers/review.py MEDIA_EXTS / SLIDE_EXTS, backend/app/config.py).
 const MAX_MEDIA_MB = 25;
 const MAX_SLIDE_MB = 20;
+// Contest-mode only (backend/app/config.py max_contest_slide_*); checked by the server.
+const MAX_SLIDE_PAGES = 60;
+const MAX_SLIDE_CHARS = 30000;
 
 interface Props {
   questionSet: QuestionSet;
@@ -62,7 +65,8 @@ export function AudioScoreForm({ questionSet, errorMessage, onSubmit, onBack }: 
       </label>
 
       <p className="note">
-        スライドは文字（スピーカーノートを含む）だけを読み取ります。図や画像の中の文字は読み取れません。
+        スライドは文字（スピーカーノート・表・グループ化した図形の中の文字を含む）だけを読み取ります。図や画像の中の文字は読み取れません。
+        スライドは{MAX_SLIDE_PAGES}ページ・{MAX_SLIDE_CHARS.toLocaleString()}文字（ノートを含む）までです。
       </p>
 
       {(localError || errorMessage) && <p className="error-text">{localError ?? errorMessage}</p>}

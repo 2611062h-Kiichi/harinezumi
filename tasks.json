@@ -309,6 +309,29 @@
       ],
       "dependencies": ["T08"],
       "acceptance": ["AC-00a", "AC-00c", "AC-00d", "AC-10"]
+    },
+    {
+      "id": "T17",
+      "task": "採用された提案 P7 を反映する: (a) コンテスト観点モードの採点でスライドのページ数・文字数に上限を設け、超えたら日本語の400で知らせる（音声の書き起こしより前に確かめる）、(b) PPTX の表・グループ化した図形の中の文字も読み取れるようにし、画面の注記も合わせる、(c) 書き起こしが空で400になったとき、スライドがあれば「スライドだけで採点し直せる」ことを案内する",
+      "owner": "ai",
+      "status": "review",
+      "passes": false,
+      "evidence": [
+        "evals/evidence/T17/pytest.log",
+        "evals/evidence/T17/before-fix.log",
+        "evals/evidence/T17/build.log",
+        "evals/evidence/T17/screenshot-01-form-note.png",
+        "evals/evidence/T17/screenshot-02-too-many-pages.png",
+        "evals/evidence/T17/screenshot-03-silent-audio-hint.png",
+        "evals/evidence/T17/secret-scan.log",
+        "evals/evidence/T17/check_tasks.log",
+        "backend/app/services/contest_scorer.py",
+        "backend/app/services/slide_extractor.py",
+        "backend/tests/test_contest_slide_limits.py",
+        "backend/tests/test_slide_extractor.py"
+      ],
+      "dependencies": ["T15"],
+      "acceptance": ["AC-00a", "AC-00b", "AC-00c", "AC-00d", "AC-09", "AC-12"]
     }
   ]
 }

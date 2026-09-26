@@ -13,6 +13,9 @@ class Settings(BaseSettings):
     whisper_model: str = "whisper-1"
     max_slide_mb: int = 20
     max_media_mb: int = 25  # Whisper's hard per-file limit
+    # Contest-mode scoring sends all slide text to Jev; keep it to pitch-deck size.
+    max_contest_slide_pages: int = 60
+    max_contest_slide_chars: int = 30000  # body text + speaker notes
     cors_origin: str = "http://localhost:5173"
 
 

@@ -3,6 +3,7 @@ import os
 import pdfplumber
 from fastapi import HTTPException
 from pptx import Presentation
+from pptx.enum.shapes import MSO_SHAPE_TYPE
 
 from app.models.schemas import SlideContent, SlideExtractionResult
 
@@ -16,14 +17,28 @@ def extract_from_pdf(path: str, filename: str) -> SlideExtractionResult:
     return SlideExtractionResult(filename=filename, slides=slides)
 
 
+def _shape_texts(shapes) -> list[str]:
+    """Text of each shape in order, looking inside groups (recursively) and tables."""
+    texts: list[str] = []
+    for shape in shapes:
+        if shape.shape_type == MSO_SHAPE_TYPE.GROUP:
+            texts.extend(_shape_texts(shape.shapes))
+        elif shape.has_table:
+            for row in shape.table.rows:
+                cells = [cell.text.strip() for cell in row.cells]
+                line = " | ".join(c for c in cells if c)
+                if line:
+                    texts.append(line)
+        elif shape.has_text_frame and shape.text_frame.text.strip():
+            texts.append(shape.text_frame.text.strip())
+    return texts
+
+
 def extract_from_pptx(path: str, filename: str) -> SlideExtractionResult:
     presentation = Presentation(path)
     slides: list[SlideContent] = []
     for i, slide in enumerate(presentation.slides):
-        texts = []
-        for shape in slide.shapes:
-            if shape.has_text_frame and shape.text_frame.text.strip():
-                texts.append(shape.text_frame.text.strip())
+        texts = _shape_texts(slide.shapes)
         notes = ""
         if slide.has_notes_slide and slide.notes_slide.notes_text_frame:
             notes = slide.notes_slide.notes_text_frame.text.strip()
