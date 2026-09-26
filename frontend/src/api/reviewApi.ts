@@ -1,4 +1,4 @@
-import type { PitchReviewResponse, RubricMode } from "../types/review";
+import type { PitchReviewResponse, RubricMode, RubricPreviewResponse } from "../types/review";
 
 const REQUEST_TIMEOUT_MS = 5 * 60 * 1000;
 
@@ -9,6 +9,29 @@ const REQUEST_TIMEOUT_MS = 5 * 60 * 1000;
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "";
 
 export class ReviewApiError extends Error {}
+
+export async function fetchRubricPreview(
+  mode: RubricMode,
+  eventContext?: string | null,
+): Promise<RubricPreviewResponse> {
+  const formData = new FormData();
+  formData.append("mode", mode);
+  if (eventContext) {
+    formData.append("event_context", eventContext);
+  }
+
+  const response = await fetch(`${API_BASE_URL}/api/rubric/preview`, {
+    method: "POST",
+    body: formData,
+  });
+
+  if (!response.ok) {
+    const body = await response.json().catch(() => null);
+    throw new ReviewApiError(body?.detail ?? `評価基準の取得に失敗しました (HTTP ${response.status})`);
+  }
+
+  return (await response.json()) as RubricPreviewResponse;
+}
 
 export async function submitPitchReview(
   slideFile: File | null | undefined,

@@ -1,7 +1,9 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
-import type { RubricMode } from "../types/review";
+import type { RubricMode, RubricPreviewResponse } from "../types/review";
 import { PoweredBy } from "./PoweredBy";
+import { RubricPreviewPanel } from "./RubricPreviewPanel";
+import { fetchRubricPreview, ReviewApiError } from "../api/reviewApi";
 
 const MAX_SLIDE_MB = 20;
 const MAX_MEDIA_MB = 25; // Whisper's hard per-file limit
@@ -33,6 +35,28 @@ export function UploadForm({ onSubmit }: Props) {
   const [mode, setMode] = useState<RubricMode>("business");
   const [eventContext, setEventContext] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [rubricPreview, setRubricPreview] = useState<RubricPreviewResponse | null>(null);
+  const [rubricPreviewLoading, setRubricPreviewLoading] = useState(false);
+  const [rubricPreviewError, setRubricPreviewError] = useState<string | null>(null);
+
+  function handleModeChange(value: RubricMode) {
+    setMode(value);
+    setRubricPreview(null);
+    setRubricPreviewError(null);
+  }
+
+  async function handlePreviewRubric() {
+    setRubricPreviewLoading(true);
+    setRubricPreviewError(null);
+    try {
+      const preview = await fetchRubricPreview(mode, mode === "general" ? eventContext.trim() : null);
+      setRubricPreview(preview);
+    } catch (err) {
+      setRubricPreviewError(err instanceof ReviewApiError ? err.message : "評価基準の取得中にエラーが発生しました。");
+    } finally {
+      setRubricPreviewLoading(false);
+    }
+  }
 
   function handleSlideChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0] ?? null;
@@ -96,7 +120,7 @@ export function UploadForm({ onSubmit }: Props) {
 
       <label className="field">
         <span>審査モード</span>
-        <select value={mode} onChange={(e) => setMode(e.target.value as RubricMode)}>
+        <select value={mode} onChange={(e) => handleModeChange(e.target.value as RubricMode)}>
           {RUBRIC_MODE_OPTIONS.map((opt) => (
             <option key={opt.id} value={opt.id}>
               {opt.label}
@@ -113,13 +137,24 @@ export function UploadForm({ onSubmit }: Props) {
             maxLength={MAX_EVENT_CONTEXT_LENGTH}
             placeholder="例: 学生団体主催のアプリ開発ハッカソン、社会人向け新規事業ピッチコンテストなど"
             value={eventContext}
-            onChange={(e) => setEventContext(e.target.value)}
+            onChange={(e) => {
+              setEventContext(e.target.value);
+              setRubricPreview(null);
+            }}
           />
           <p className="note">
             イベントの内容を入力すると、その内容に合わせてAIが専用の審査基準を作成します。空欄の場合は汎用の審査基準を使用します。
           </p>
         </label>
       )}
+
+      <div className="field">
+        <button type="button" className="secondary-button" onClick={handlePreviewRubric} disabled={rubricPreviewLoading}>
+          {rubricPreviewLoading ? "評価基準を生成中…" : "評価基準を確認する"}
+        </button>
+        {rubricPreviewError && <p className="error-text">{rubricPreviewError}</p>}
+        {rubricPreview && <RubricPreviewPanel preview={rubricPreview} />}
+      </div>
 
       <label className="field">
         <span>スライド資料（PDF / PPTX、任意）</span>

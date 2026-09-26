@@ -166,6 +166,70 @@ button:disabled {
   box-shadow: none;
 }
 
+.secondary-button {
+  background: transparent;
+  color: var(--text);
+  border: 1px solid var(--glass-border);
+  box-shadow: none;
+}
+
+.secondary-button:hover:not(:disabled) {
+  border-color: var(--accent-2);
+  box-shadow: none;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.secondary-button:disabled {
+  background: transparent;
+  border-color: var(--glass-border);
+}
+
+.rubric-preview {
+  margin-top: 16px;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+}
+
+.rubric-preview-label {
+  margin: 0 0 10px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--accent-2);
+}
+
+.rubric-preview-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.rubric-preview-list summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--text);
+  font-size: 0.92rem;
+  user-select: none;
+}
+
+.rubric-preview-list ol {
+  margin: 8px 0 0;
+  padding-left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.rubric-preview-list li {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+
 .error-text {
   color: #ff8a8a;
 }

@@ -1,14 +1,21 @@
 import shutil
 import tempfile
 
+from anthropic import AsyncAnthropic
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 
 from app.config import get_settings
-from app.models.schemas import PitchReviewResponse, SlideExtractionResult, TranscriptionResult
+from app.models.schemas import (
+    PitchReviewResponse,
+    RubricCriterionPreview,
+    RubricPreviewResponse,
+    SlideExtractionResult,
+    TranscriptionResult,
+)
 from app.rubric import DEFAULT_MODE, RUBRIC_MODES
 from app.services import history, review_generator, slide_extractor
 from app.services.media_url import download_audio_from_url
-from app.services.review_generator import DEFAULT_TONE, TONE_LABELS
+from app.services.review_generator import DEFAULT_TONE, TONE_LABELS, resolve_rubric
 from app.services.transcription import transcribe
 from app.utils.file_validation import save_temp_upload, validate_upload
 
@@ -48,6 +55,33 @@ async def transcribe_media_endpoint(file: UploadFile = File(...)):
         return await transcribe(path, file.filename)
     finally:
         shutil.rmtree(tmp_dir, ignore_errors=True)
+
+
+@router.post("/rubric/preview", response_model=RubricPreviewResponse)
+async def preview_rubric(
+    mode: str = Form(DEFAULT_MODE),
+    event_context: str | None = Form(None),
+):
+    if mode not in RUBRIC_MODES:
+        raise HTTPException(status_code=400, detail=f"不明な審査モードです: {mode}")
+    if event_context and len(event_context) > MAX_EVENT_CONTEXT_LENGTH:
+        raise HTTPException(
+            status_code=400,
+            detail=f"イベント内容は{MAX_EVENT_CONTEXT_LENGTH}文字以内で入力してください。",
+        )
+
+    settings = get_settings()
+    if not settings.anthropic_api_key:
+        raise HTTPException(status_code=400, detail="ANTHROPIC_API_KEYが設定されていません。")
+
+    client = AsyncAnthropic(api_key=settings.anthropic_api_key)
+    event_context = event_context.strip() if event_context else None
+    criteria, _, rubric_label = await resolve_rubric(client, settings.claude_model, mode, event_context)
+
+    return RubricPreviewResponse(
+        rubric_mode_label=rubric_label,
+        criteria=[RubricCriterionPreview(id=c["id"], name=c["name"], levels=c["levels"]) for c in criteria],
+    )
 
 
 @router.post("/review", response_model=PitchReviewResponse)

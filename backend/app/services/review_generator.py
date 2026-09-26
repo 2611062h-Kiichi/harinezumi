@@ -223,6 +223,20 @@ async def _call_claude(
     return response.parsed_output
 
 
+async def resolve_rubric(
+    client: AsyncAnthropic, model: str, mode: str, event_context: str | None
+) -> tuple[list[dict], str, str]:
+    """Resolves (rubric_criteria, mode_intro, rubric_label) for a mode +
+    optional event_context. Shared by generate_review() and the rubric
+    preview endpoint so both see exactly the same rubric."""
+    if mode == "business":
+        return BUSINESS_RUBRIC_CRITERIA, BUSINESS_INTRO, "ビジネスコンテスト向け（起業の科学ベース）"
+    if event_context:
+        rubric_criteria = await generate_custom_rubric(client, model, event_context)
+        return rubric_criteria, build_general_intro(event_context), f"汎用ピッチ審査（{event_context}向け）"
+    return GENERAL_RUBRIC_CRITERIA, GENERAL_INTRO_DEFAULT, "汎用ピッチ審査"
+
+
 async def generate_review(
     slides: SlideExtractionResult | None,
     transcript: str | None,
@@ -244,18 +258,7 @@ async def generate_review(
     client = AsyncAnthropic(api_key=settings.anthropic_api_key)
     event_context = event_context.strip() if event_context else None
 
-    if mode == "business":
-        rubric_criteria = BUSINESS_RUBRIC_CRITERIA
-        mode_intro = BUSINESS_INTRO
-        rubric_label = "ビジネスコンテスト向け（起業の科学ベース）"
-    elif event_context:
-        rubric_criteria = await generate_custom_rubric(client, settings.claude_model, event_context)
-        mode_intro = build_general_intro(event_context)
-        rubric_label = f"汎用ピッチ審査（{event_context}向け）"
-    else:
-        rubric_criteria = GENERAL_RUBRIC_CRITERIA
-        mode_intro = GENERAL_INTRO_DEFAULT
-        rubric_label = "汎用ピッチ審査"
+    rubric_criteria, mode_intro, rubric_label = await resolve_rubric(client, settings.claude_model, mode, event_context)
 
     pitch_content = build_user_prompt(slides, transcript)
     jev_available = bool(settings.typesafe_api_key)

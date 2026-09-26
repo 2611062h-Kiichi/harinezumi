@@ -29,3 +29,14 @@ export interface PitchReviewResponse {
 }
 
 export type RubricMode = "business" | "general";
+
+export interface RubricCriterionPreview {
+  id: string;
+  name: string;
+  levels: string[];
+}
+
+export interface RubricPreviewResponse {
+  rubric_mode_label: string;
+  criteria: RubricCriterionPreview[];
+}

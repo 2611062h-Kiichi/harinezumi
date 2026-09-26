@@ -94,3 +94,14 @@ class CustomRubricLLMOutput(BaseModel):
     user-described event, used for the general mode's optional event_context."""
 
     criteria: list[GeneratedCriterion] = Field(min_length=5, max_length=9)
+
+
+class RubricCriterionPreview(BaseModel):
+    id: str
+    name: str
+    levels: list[str]
+
+
+class RubricPreviewResponse(BaseModel):
+    rubric_mode_label: str
+    criteria: list[RubricCriterionPreview]
