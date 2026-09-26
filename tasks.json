@@ -42,9 +42,15 @@
       "id": "T02",
       "task": "pytest を導入し、既存機能（配点計算、スライド抽出、/api/health、jev_scorer、transcription）の回帰テストをモックで書く",
       "owner": "ai",
-      "status": "todo",
+      "status": "review",
       "passes": false,
-      "evidence": [],
+      "evidence": [
+        "evals/evidence/T02/pytest.log",
+        "evals/evidence/T02/secret-scan.log",
+        "evals/evidence/T02/check_tasks.log",
+        "backend/tests/conftest.py",
+        "backend/tests/test_network_guard.py"
+      ],
       "dependencies": ["T00"],
       "acceptance": ["AC-00a", "AC-00c", "AC-00d", "AC-03", "AC-04"]
     },

@@ -1,0 +1,35 @@
+$ cd backend && .venv/Scripts/python -m pytest -v
+============================= test session starts =============================
+platform win32 -- Python 3.14.5, pytest-9.1.1, pluggy-1.6.0 -- C:\Users\tomo2\OneDrive\Desktop\エンジニアリング\ハリネズミ\backend\.venv\Scripts\python.exe
+cachedir: .pytest_cache
+rootdir: C:\Users\tomo2\OneDrive\Desktop\エンジニアリング\ハリネズミ\backend
+configfile: pytest.ini
+testpaths: tests
+plugins: anyio-4.15.1
+collecting ... collected 23 items
+
+tests/test_health.py::test_health_endpoint_returns_ok PASSED             [  4%]
+tests/test_jev_scorer.py::test_sends_pitch_text_and_score_questions_to_jev PASSED [  8%]
+tests/test_jev_scorer.py::test_missing_typesafe_key_is_a_clear_error PASSED [ 13%]
+tests/test_jev_scorer.py::test_authentication_error_becomes_japanese_400 PASSED [ 17%]
+tests/test_network_guard.py::test_blocking_connect_is_blocked PASSED     [ 21%]
+tests/test_network_guard.py::test_hostname_resolution_is_blocked PASSED  [ 26%]
+tests/test_network_guard.py::test_async_http_client_is_blocked[https://api.typesafe.ai/] PASSED [ 30%]
+tests/test_network_guard.py::test_async_http_client_is_blocked[https://1.1.1.1/] PASSED [ 34%]
+tests/test_network_guard.py::test_unmocked_jev_call_never_leaves_the_machine PASSED [ 39%]
+tests/test_network_guard.py::test_real_api_keys_are_replaced_with_dummies PASSED [ 43%]
+tests/test_rubric.py::test_overall_score_is_100_when_every_criterion_is_max[business] PASSED [ 47%]
+tests/test_rubric.py::test_overall_score_is_100_when_every_criterion_is_max[general] PASSED [ 52%]
+tests/test_rubric.py::test_overall_score_is_20_when_every_criterion_is_min[business] PASSED [ 56%]
+tests/test_rubric.py::test_overall_score_is_20_when_every_criterion_is_min[general] PASSED [ 60%]
+tests/test_rubric.py::test_overall_score_accepts_fractional_jev_scores PASSED [ 65%]
+tests/test_rubric.py::test_every_criterion_has_unique_id_and_five_levels[business] PASSED [ 69%]
+tests/test_rubric.py::test_every_criterion_has_unique_id_and_five_levels[general] PASSED [ 73%]
+tests/test_rubric.py::test_unknown_mode_raises PASSED                    [ 78%]
+tests/test_slide_extractor.py::test_extracts_text_and_notes_from_pptx PASSED [ 82%]
+tests/test_slide_extractor.py::test_unsupported_extension_is_rejected PASSED [ 86%]
+tests/test_transcription.py::test_returns_whisper_text PASSED            [ 91%]
+tests/test_transcription.py::test_missing_openai_key_is_a_clear_error PASSED [ 95%]
+tests/test_transcription.py::test_file_over_whisper_limit_is_rejected PASSED [100%]
+
+============================= 23 passed in 3.72s ==============================

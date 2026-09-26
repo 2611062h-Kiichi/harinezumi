@@ -6,3 +6,4 @@ venv/
 data/reviews/*.json
 
 .vercel
+.pytest_cache/

@@ -8,18 +8,32 @@
 ## 引き継ぎメモ（常に最新の状態に書き換える欄）
 - **最終更新**: 2026-09-26
 - **今の作業ブランチ**: `feature/contest-jev-questions`（土台: origin/feature/business-contest-rubric の b2dfe7f。upstream は未設定＝まだ push していない）
-- **最後に終わったこと**: T01 合格（2回目の検品。`evals/evidence/T01/review.md`）
-- **次にやること**: T02（AI・pytest 導入と既存機能の回帰テスト）
+- **最後に終わったこと**: T02 実装完了 → 評価役の検品待ち（status: review）
+- **次にやること**: T02 の検品 → 合格なら T03（観点・Question・採点結果の型定義）
 - **止まっていること / 人間待ち**: なし（基準タグ `harness-baseline` = 86bd2d7）
 - **注意**:
   - 依存関係は作業ブランチの内容で入れ直し済み（typesafe-sdk 0.7.1 の import、`npm run build` の成功を確認）
+  - バックエンドのテスト: `cd backend && .venv/Scripts/python -m pytest -q`（開発用の道具は `pip install -r requirements-dev.txt`）
   - `npm install` を実行すると、npm のバージョン差で `frontend/package-lock.json` の `libc` 行が消える。機能には関係ないので `git checkout -- frontend/package-lock.json` で戻す
   - APIキーの有無（値は見ていない）: `TYPESAFE_API_KEY` は Windows の環境変数で設定済み。`ANTHROPIC_API_KEY` は未設定（`backend/.env` がダミー値のまま）。`backend/.env` には `TYPESAFE_API_KEY` の行が無い（main の .env.example から作ったため）
 
 ---
 
 ## 作業計画（計画役が書く・タスクごとに上書き）
-_（まだなし）_
+### T02 pytest 導入と既存機能の回帰テスト（AC-00a, AC-00c, AC-00d, AC-03, AC-04）
+1. `backend/requirements-dev.txt`（`-r requirements.txt` + `pytest`）と `backend/pytest.ini`（testpaths=tests, pythonpath=.）を追加
+2. `backend/tests/conftest.py`: 全テストで自動的に
+   - 外部への通信を禁止（localhost 以外への socket 接続でエラー）→ AC-04 をしくみで保証
+   - APIキーをダミー値に差し替え（Windows の環境変数や .env の本物のキーを使わない）＋ `get_settings` のキャッシュをクリア
+3. テストを書く（外部 API は偽物のクライアントに差し替え。非同期関数は `asyncio.run` で呼ぶので pytest-asyncio は不要）
+   - `test_rubric.py`: 合計点の計算（満点→100、最低点→20）、全項目が5段階、未知のモードはエラー
+   - `test_slide_extractor.py`: その場で作った PPTX から本文とノートを抽出、未対応の拡張子は 400
+   - `test_health.py`: `GET /api/health` が 200
+   - `test_jev_scorer.py`: Jev に渡す state と Score 型の questions、0始まり→1〜5への変換、キー無しで 400、認証エラーで日本語の 400
+   - `test_transcription.py`: Whisper の結果をそのまま返す、キー無しで 400、25MB 超で 400
+4. 証拠: `evals/evidence/T02/` に pytest.log（通常）、pytest-offline.log（通信禁止の確認テスト含む）、secret-scan.log、check_tasks.log（1行目に実行コマンド）
+- 変更予定ファイル: `backend/requirements-dev.txt`, `backend/pytest.ini`, `backend/tests/*`（アプリ本体のコードは変えない）
+- 承認が必要な操作: なし（pytest はテスト用の道具で、safety.md 1章の例外。実 API は呼ばない）
 
 ---
 
@@ -53,6 +67,13 @@ _（まだなし）_
 - 人間の追加回答（原文）: TypeSafe の解釈について「あっています」、提案 P1 について「採用してください」→ requirements.md 3章を確定に、roles.md 2章に P1 を反映
 - 人間が基準タグを付け直し（86bd2d7）→ 評価役の再検品で **合格**（AC-02/AC-00c/AC-00d すべて○）。証拠: `evals/evidence/T01/review.md`
 
+### 2026-09-26 T02 pytest 導入と既存機能の回帰テスト
+- 追加: `backend/requirements-dev.txt`（pytest）、`backend/pytest.ini`、`backend/tests/`（23テスト）、`backend/.gitignore` に `.pytest_cache/`。アプリ本体のコードは変更なし
+- テスト対象: 配点計算・ルーブリック構造、PPTX 抽出、/api/health、jev_scorer（Jev に渡す内容・点数変換・エラー）、transcription（Whisper の結果・エラー）
+- `tests/conftest.py` が全テストで、APIキーをダミー値に差し替え、外部への通信を遮断する
+- **発見と修正**: 最初の通信遮断は `socket.connect` しか止めておらず、確認のためにモック無しで Jev を呼んだところ、**ダミーキー `test-typesafe-key` を付けた1回分のリクエストが api.typesafe.ai に届いた**（認証エラーで拒否。本物のキーは送られておらず、料金も発生していない）。原因は、非同期の通信がホスト名の解決（getaddrinfo）と Windows 専用の接続方式（ConnectEx）を使い、`socket.connect` を通らないこと。名前解決と asyncio の接続も遮断するよう直し、`test_network_guard.py` に再発防止テストを入れた（モック無しの Jev 呼び出しが「認証エラー」ではなく「接続失敗」になることを確認）
+- 証拠: `evals/evidence/T02/`（pytest.log: 23 passed、secret-scan.log: 一致なし、check_tasks.log）
+
 ---
 
 ## 学んだこと（改善の蓄積）
@@ -65,3 +86,5 @@ _（まだなし）_
 - T00（評価役の指摘）: 秘密情報チェックの証拠に、実際に使ったコマンドと違う書き方を残していた。証拠には、実行したコマンドをそのまま記録する
 - T01（評価役の指摘・不合格）: 見出しに「確定」の印を付けると、その下の項目すべてが確定に見える。確定・仮定の印は、項目ごとに付ける
 - T01: `check_tasks.log` にも実行したコマンド行を入れる（T00 と同じ種類の指摘が2回目 → P1 として docs/roles.md に反映済み）
+- T02: 「テストが全部通った」だけでは安全装置が効いている証明にならない。わざと失敗するはずの状況（モック無しの呼び出し）を作って、本当に止まるか確かめる。今回それで遮断の抜け穴が見つかった
+- T02: Windows の非同期通信は `socket.connect` を通らない。通信を止めるときは名前解決（getaddrinfo）と asyncio の接続も止める
