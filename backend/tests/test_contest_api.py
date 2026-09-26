@@ -171,11 +171,11 @@ def test_unsupported_extension_is_400(fakes):
     assert fakes.whisper.calls == []
 
 
-def test_missing_media_file_is_400(fakes):
+def test_missing_both_media_and_slides_is_400(fakes):
     response = post_score(filename=None)
 
     assert response.status_code == 400
-    assert "音声または動画ファイルを指定してください" in response.json()["detail"]
+    assert response.json()["detail"] == "スライド資料、または発表の音声・動画ファイルを指定してください。"
 
 
 def test_missing_question_set_is_400(fakes):

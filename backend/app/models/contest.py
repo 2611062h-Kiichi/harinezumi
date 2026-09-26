@@ -107,8 +107,11 @@ class ContestScoreResult(BaseModel):
     results: list[ContestCriterionResult] = Field(min_length=1, max_length=MAX_CRITERIA)
     total_points: float = Field(ge=0)
     max_total_points: int = Field(ge=1)
-    transcript: str
+    transcript: str  # empty when scored from slides only
     generated_at: datetime
+    # What the score was based on; the scorer always sets both explicitly.
+    slides_included: bool = False
+    transcript_included: bool = True
 
 
 class SavedQuestionSet(BaseModel):

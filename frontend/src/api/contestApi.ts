@@ -62,9 +62,15 @@ export function loadQuestionSet(id: string): Promise<SavedQuestionSet> {
   return getJson<SavedQuestionSet>(`/api/contest/question-sets/${encodeURIComponent(id)}`);
 }
 
-export async function scoreAudio(questionSet: QuestionSet, mediaFile: File): Promise<ContestScoreResult> {
+// At least one of mediaFile / slideFile must be given; the backend rejects neither.
+export async function scorePitch(
+  questionSet: QuestionSet,
+  mediaFile: File | null,
+  slideFile: File | null,
+): Promise<ContestScoreResult> {
   const formData = new FormData();
-  formData.append("media_file", mediaFile);
+  if (mediaFile) formData.append("media_file", mediaFile);
+  if (slideFile) formData.append("slide_file", slideFile);
   formData.append("question_set", JSON.stringify(questionSet));
   // No Content-Type header: the browser sets the multipart boundary itself.
   return readResponse<ContestScoreResult>(await fetchWithTimeout("/api/contest/score", { method: "POST", body: formData }));

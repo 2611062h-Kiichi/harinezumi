@@ -1,57 +1,73 @@
 import { useState } from "react";
-import type { FormEvent } from "react";
+import type { ChangeEvent, FormEvent } from "react";
 import type { QuestionSet } from "../../types/contest";
 
-// Same accepted extensions and per-file limit as the pitch-review upload form
-// (backend/app/routers/review.py MEDIA_EXTS, backend/app/config.py max_media_mb).
+// Same accepted extensions and per-file limits as the pitch-review upload form
+// (backend/app/routers/review.py MEDIA_EXTS / SLIDE_EXTS, backend/app/config.py).
 const MAX_MEDIA_MB = 25;
+const MAX_SLIDE_MB = 20;
 
 interface Props {
   questionSet: QuestionSet;
   errorMessage: string | null;
-  onSubmit: (file: File) => void;
+  onSubmit: (mediaFile: File | null, slideFile: File | null) => void;
   onBack: () => void;
 }
 
 export function AudioScoreForm({ questionSet, errorMessage, onSubmit, onBack }: Props) {
-  const [file, setFile] = useState<File | null>(null);
+  const [mediaFile, setMediaFile] = useState<File | null>(null);
+  const [slideFile, setSlideFile] = useState<File | null>(null);
   const [localError, setLocalError] = useState<string | null>(null);
 
-  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+  function pick(e: ChangeEvent<HTMLInputElement>, maxMb: number, label: string, set: (f: File | null) => void) {
     const selected = e.target.files?.[0] ?? null;
-    if (selected && selected.size > MAX_MEDIA_MB * 1024 * 1024) {
-      setLocalError(`音声/動画ファイルが大きすぎます（上限 ${MAX_MEDIA_MB}MB）。`);
-      setFile(null);
+    if (selected && selected.size > maxMb * 1024 * 1024) {
+      setLocalError(`${label}が大きすぎます（上限 ${maxMb}MB）。`);
+      set(null);
       return;
     }
     setLocalError(null);
-    setFile(selected);
+    set(selected);
   }
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    if (!file) {
-      setLocalError("発表の音声・動画ファイルを選択してください。");
+    if (!mediaFile && !slideFile) {
+      setLocalError("スライド資料、または発表の音声・動画のどちらかを選択してください。");
       return;
     }
-    onSubmit(file);
+    onSubmit(mediaFile, slideFile);
   }
 
   return (
     <form className="upload-form" onSubmit={handleSubmit}>
       <h1>発表を採点する</h1>
       <p className="lead">
-        {questionSet.rubric.contest_name} のQuestion（{questionSet.questions.length}件）で、発表の音声・動画を採点します。
+        {questionSet.rubric.contest_name} のQuestion（{questionSet.questions.length}件）で採点します。
+        スライド資料と発表の音声・動画のどちらか一方だけでも、両方でも採点できます。
       </p>
 
       <label className="field">
-        <span>発表の音声・動画</span>
-        <input type="file" accept=".mp3,.mp4,.mpeg,.mpga,.m4a,.wav,.webm" onChange={handleFileChange} />
+        <span>スライド資料（PDF / PPTX、任意）</span>
+        <input type="file" accept=".pdf,.pptx" onChange={(e) => pick(e, MAX_SLIDE_MB, "スライドファイル", setSlideFile)} />
       </label>
+
+      <label className="field">
+        <span>発表の音声・動画（任意）</span>
+        <input
+          type="file"
+          accept=".mp3,.mp4,.mpeg,.mpga,.m4a,.wav,.webm"
+          onChange={(e) => pick(e, MAX_MEDIA_MB, "音声/動画ファイル", setMediaFile)}
+        />
+      </label>
+
+      <p className="note">
+        スライドは文字（スピーカーノートを含む）だけを読み取ります。図や画像の中の文字は読み取れません。
+      </p>
 
       {(localError || errorMessage) && <p className="error-text">{localError ?? errorMessage}</p>}
 
-      <button type="submit" disabled={!file}>
+      <button type="submit" disabled={!mediaFile && !slideFile}>
         採点する
       </button>
       <button type="button" className="secondary-button" onClick={onBack}>

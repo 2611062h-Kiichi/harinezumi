@@ -1,4 +1,4 @@
-"""Scores a pitch transcript against a contest's QuestionSet with Jev.
+"""Scores a pitch (transcript and/or slides) against a contest's QuestionSet with Jev.
 
 Jev only rates each criterion on its 0-based level scale; conversion to the
 contest's points and the total are computed here, deterministically.
@@ -17,7 +17,9 @@ from app.models.contest import (
     ContestScoreResult,
     QuestionSet,
 )
+from app.models.schemas import SlideExtractionResult
 from app.services.jev_scorer import run_system_one
+from app.services.review_generator import build_user_prompt
 from app.services.transcription import transcribe
 
 logger = logging.getLogger(__name__)
@@ -51,15 +53,43 @@ def to_points(jev_score: float, level_count: int, max_points: int) -> float:
     return round_half_up(Decimal(str(jev_score)) / (level_count - 1) * max_points)
 
 
-async def score_transcript(question_set: QuestionSet, transcript: str) -> ContestScoreResult:
-    if not transcript.strip():
+def build_jev_state(slides: SlideExtractionResult | None, transcript: str | None) -> str:
+    # Transcript only: pass it through unchanged, exactly as before slides were
+    # supported. With slides: the same slide + transcript layout the pitch-review
+    # mode already sends to Jev.
+    if slides is None:
+        return transcript or ""
+    return build_user_prompt(slides, transcript)
+
+
+def _has_slide_text(slides: SlideExtractionResult) -> bool:
+    return any(s.text.strip() or s.notes.strip() for s in slides.slides)
+
+
+async def score_materials(
+    question_set: QuestionSet,
+    slides: SlideExtractionResult | None = None,
+    transcript: str | None = None,
+) -> ContestScoreResult:
+    """Scores a pitch from its slides, its transcript, or both."""
+    if slides is None and transcript is None:
+        raise HTTPException(status_code=400, detail="スライド資料、または発表の音声・動画を指定してください。")
+    if transcript is not None and not transcript.strip():
         raise HTTPException(
             status_code=400,
             detail="発表の文字起こしが空です。音声に話し声が入っているか確認して、もう一度お試しください。",
         )
+    if transcript is None and not _has_slide_text(slides):
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "スライド資料から文字を読み取れませんでした。画像だけのスライドやスキャンしたPDFは読み取れません。"
+                "文字を含む資料を使うか、発表の音声・動画と一緒に送ってください。"
+            ),
+        )
 
     questions = build_jev_questions(question_set)
-    response = await run_system_one(transcript, questions)
+    response = await run_system_one(build_jev_state(slides, transcript), questions)
 
     levels_by_id = {q.criterion_id: q.levels for q in question_set.questions}
     results = []
@@ -103,12 +133,23 @@ async def score_transcript(question_set: QuestionSet, transcript: str) -> Contes
         results=results,
         total_points=round_half_up(sum(Decimal(str(r.points)) for r in results)),
         max_total_points=sum(c.max_points for c in question_set.rubric.criteria),
-        transcript=transcript,
+        transcript=transcript or "",
         generated_at=datetime.now(timezone.utc),
+        slides_included=slides is not None,
+        transcript_included=transcript is not None,
     )
 
 
-async def score_audio(question_set: QuestionSet, audio_path: str, filename: str) -> ContestScoreResult:
-    """Transcribes the pitch with Whisper and scores the text as-is with Jev."""
+async def score_transcript(question_set: QuestionSet, transcript: str) -> ContestScoreResult:
+    return await score_materials(question_set, transcript=transcript)
+
+
+async def score_audio(
+    question_set: QuestionSet,
+    audio_path: str,
+    filename: str,
+    slides: SlideExtractionResult | None = None,
+) -> ContestScoreResult:
+    """Transcribes the pitch with Whisper and scores it (with slides, if any) with Jev."""
     transcription = await transcribe(audio_path, filename)
-    return await score_transcript(question_set, transcription.text)
+    return await score_materials(question_set, slides=slides, transcript=transcription.text)

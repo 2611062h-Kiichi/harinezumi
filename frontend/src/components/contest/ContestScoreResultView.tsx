@@ -6,10 +6,17 @@ interface Props {
   onReset: () => void;
 }
 
+function sourceLabel(result: ContestScoreResult): string {
+  if (result.slides_included && result.transcript_included) return "スライド資料と発表の音声で採点しました。";
+  if (result.slides_included) return "スライド資料だけで採点しました（発表の音声なし）。";
+  return "発表の音声で採点しました（スライド資料なし）。";
+}
+
 export function ContestScoreResultView({ result, onScoreAgain, onReset }: Props) {
   return (
     <div className="contest-score-result">
       <h1>{result.contest_name} の採点結果</h1>
+      <p className="note">{sourceLabel(result)}</p>
 
       <div className="overall-card">
         <div className="overall-score">
@@ -42,7 +49,7 @@ export function ContestScoreResultView({ result, onScoreAgain, onReset }: Props)
         </div>
       </section>
 
-      <button onClick={onScoreAgain}>別の音声でもう一度採点する</button>
+      <button onClick={onScoreAgain}>もう一度採点する</button>
       <button className="secondary-button" onClick={onReset}>
         最初からやり直す
       </button>

@@ -22,8 +22,9 @@ from app.models.contest import (
     SavedQuestionSet,
     SavedQuestionSetSummary,
 )
-from app.routers.review import MEDIA_EXTS
-from app.services import contest_scorer, question_builder, question_set_storage
+from app.models.schemas import SlideExtractionResult
+from app.routers.review import MEDIA_EXTS, SLIDE_EXTS
+from app.services import contest_scorer, question_builder, question_set_storage, slide_extractor
 from app.utils.file_validation import save_temp_upload, validate_upload
 from app.utils.validation_messages import to_japanese
 
@@ -82,12 +83,18 @@ async def score_pitch(request: Request):
             status_code=400, detail="送信データの形が正しくありません。画面からもう一度送信してください。"
         ) from e
 
-    media_files = form.getlist("media_file")
-    if len(media_files) > 1:
-        raise HTTPException(status_code=400, detail="音声または動画ファイルは1つだけ指定してください。")
-    media_file = media_files[0] if media_files else None
-    if not isinstance(media_file, UploadFile):
-        raise HTTPException(status_code=400, detail="発表の音声または動画ファイルを指定してください。")
+    media_file = single_file(
+        form, "media_file",
+        too_many="音声または動画ファイルは1つだけ指定してください。",
+        not_a_file="発表の音声または動画ファイルを指定してください。",
+    )
+    slide_file = single_file(
+        form, "slide_file",
+        too_many="スライド資料は1つだけ指定してください。",
+        not_a_file="スライド資料はPDFまたはPPTXのファイルで指定してください。",
+    )
+    if media_file is None and slide_file is None:
+        raise HTTPException(status_code=400, detail="スライド資料、または発表の音声・動画ファイルを指定してください。")
 
     raw_question_set = form.get("question_set")
     if isinstance(raw_question_set, UploadFile):
@@ -99,11 +106,45 @@ async def score_pitch(request: Request):
         raise HTTPException(status_code=400, detail="採点に使うQuestionを指定してください。")
 
     questions = parse_json(raw_question_set, QuestionSet, "Question")
-    validate_upload(media_file, MEDIA_EXTS, get_settings().max_media_mb)
+    settings = get_settings()
+    if slide_file is not None:
+        validate_upload(slide_file, SLIDE_EXTS, settings.max_slide_mb)
+    if media_file is not None:
+        validate_upload(media_file, MEDIA_EXTS, settings.max_media_mb)
 
     tmp_dir = tempfile.mkdtemp()
     try:
+        slides = None
+        if slide_file is not None:
+            slides = read_slides(save_temp_upload(slide_file, tmp_dir), slide_file.filename)
+        if media_file is None:
+            return await contest_scorer.score_materials(questions, slides=slides)
         media_path = save_temp_upload(media_file, tmp_dir)
-        return await contest_scorer.score_audio(questions, media_path, media_file.filename)
+        return await contest_scorer.score_audio(questions, media_path, media_file.filename, slides=slides)
     finally:
         shutil.rmtree(tmp_dir, ignore_errors=True)
+
+
+def single_file(form, field: str, *, too_many: str, not_a_file: str) -> UploadFile | None:
+    values = form.getlist(field)
+    if len(values) > 1:
+        raise HTTPException(status_code=400, detail=too_many)
+    if not values:
+        return None
+    if not isinstance(values[0], UploadFile):
+        raise HTTPException(status_code=400, detail=not_a_file)
+    return values[0]
+
+
+def read_slides(path: str, filename: str) -> SlideExtractionResult:
+    try:
+        return slide_extractor.extract_slides(path, filename)
+    except HTTPException:
+        raise
+    # pdfplumber / python-pptx raise assorted errors on corrupt or mislabeled
+    # files; report those as a user-fixable 400 instead of a 500.
+    except Exception as e:
+        raise HTTPException(
+            status_code=400,
+            detail="スライド資料を読み込めませんでした。ファイルが壊れていないか、PDFまたはPPTXとして保存されているか確認してください。",
+        ) from e

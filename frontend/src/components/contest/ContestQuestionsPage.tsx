@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { ContestRubric, ContestScoreResult, QuestionSet } from "../../types/contest";
-import { ContestApiError, generateQuestions, loadQuestionSet, scoreAudio } from "../../api/contestApi";
+import { ContestApiError, generateQuestions, loadQuestionSet, scorePitch } from "../../api/contestApi";
 import { CriteriaForm } from "./CriteriaForm";
 import { LoadingState } from "../LoadingState";
 import { QuestionSetReview } from "./QuestionSetReview";
@@ -19,13 +19,21 @@ type Status =
   | "score-result";
 
 const GENERATING_STAGES = ["Questionを生成中…"];
-const SCORING_STAGES = ["音声を文字起こし中…", "Jevが採点中…"];
+
+function scoringStages(mediaFile: File | null, slideFile: File | null): string[] {
+  const stages: string[] = [];
+  if (slideFile) stages.push("スライドを読み取り中…");
+  if (mediaFile) stages.push("音声を文字起こし中…");
+  stages.push("Jevが採点中…");
+  return stages;
+}
 
 export function ContestQuestionsPage() {
   const [status, setStatus] = useState<Status>("form");
   const [questionSet, setQuestionSet] = useState<QuestionSet | null>(null);
   const [scoreResult, setScoreResult] = useState<ContestScoreResult | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [stages, setStages] = useState<string[]>([]);
 
   async function handleGenerate(rubric: ContestRubric) {
     setStatus("generating");
@@ -53,12 +61,13 @@ export function ContestQuestionsPage() {
     }
   }
 
-  async function handleScoreAudio(file: File) {
+  async function handleScore(mediaFile: File | null, slideFile: File | null) {
     if (!questionSet) return;
+    setStages(scoringStages(mediaFile, slideFile));
     setStatus("scoring");
     setErrorMessage(null);
     try {
-      const result = await scoreAudio(questionSet, file);
+      const result = await scorePitch(questionSet, mediaFile, slideFile);
       setScoreResult(result);
       setStatus("score-result");
     } catch (err) {
@@ -80,7 +89,7 @@ export function ContestQuestionsPage() {
     case "loading-saved":
       return <LoadingState stages={["保存済みのQuestionsを読み込み中…"]} />;
     case "scoring":
-      return <LoadingState stages={SCORING_STAGES} />;
+      return <LoadingState stages={stages} />;
     case "saved-list":
       return (
         <SavedQuestionSetPicker onSelect={handleSelectSaved} onBack={() => setStatus("form")} />
@@ -104,7 +113,7 @@ export function ContestQuestionsPage() {
         <AudioScoreForm
           questionSet={questionSet}
           errorMessage={errorMessage}
-          onSubmit={handleScoreAudio}
+          onSubmit={handleScore}
           onBack={() => setStatus("review")}
         />
       );

@@ -8,9 +8,10 @@
 ## 引き継ぎメモ（常に最新の状態に書き換える欄）
 - **最終更新**: 2026-09-26
 - **今の作業ブランチ**: `feature/contest-jev-questions`（土台: origin/feature/business-contest-rubric の b2dfe7f。upstream は未設定＝まだ push していない）
-- **最後に終わったこと**: T14 合格（`evals/evidence/T14/review.md`）。AI が単独で着手できるタスクは一区切り
-- **次にやること**: T11（実API通し確認・要承認）。サンプル音声待ちで保留中。T12（README更新）は T11 の後
-- **人間待ち**: なし（人間が T14 を確認して基準タグを更新済み: `harness-baseline` = f901d4b）
+- **最後に終わったこと**: T14 合格。その後、人間の依頼で UI 改善・ピッチ資料作成を行い、T15（コンテスト観点モードでスライドも使う）を人間の依頼で追加
+- **次にやること**: T15 の検品（status: review）。T11（実API通し確認・要承認）はサンプル音声待ちで保留中。T12（README更新）は T11 の後
+- **開発サーバーの起動（学んだこと）**: バックエンドは `--reload` なしで起動する（`--reload` の子プロセスが止めた後もポートを握り続けることがある）。画面が真っ白でビルドは通るときは Vite の再起動を試す
+- **人間待ち**: T15 を追加したので、確認後に `git tag -f harness-baseline`。マージ・本番反映は、もう一人の開発者と相談するまで保留
 - **後続タスクへの申し送り**（T03 評価役の指摘より。該当タスクの作業計画に入れること）:
   - T05: Jev に渡す `Score` の `instructions` が観点名（または観点の内容）になっていることをテストで確かめる（採用された P2(b)）
   - T05: 型の `levels` を、Jev の `Score(criteria=...)` に名前を変えて渡す。`low_confidence` は必ず `confidence < LOW_CONFIDENCE_THRESHOLD` から計算する（型では確かめていない）
@@ -28,6 +29,17 @@
 ---
 
 ## 作業計画（計画役が書く・タスクごとに上書き）
+### T15 コンテスト観点モードでスライドも使う（AC-00a, AC-00b, AC-00c, AC-00d, AC-08, AC-09, AC-12）
+- 人間の依頼（2026-09-27）:「コンテスト観点モードでもスライドを使えるようにしてください」
+1. `contest_scorer.py`: `score_materials(question_set, slides, transcript)` を追加。Jev の state は、スライドが無ければ書き起こしをそのまま（従来どおり＝AC-08 を崩さない）、スライドがあれば既存の `review_generator.build_user_prompt`（ピッチ審査と同じ組み立て）でスライドの文字＋スピーカーノート＋書き起こしをまとめた文章にする。`score_transcript`・`score_audio` はこの関数を使う形に整理
+2. 空の判定: 音声を送ったのに書き起こしが空 → 400（従来どおり）。スライドだけで、どのスライドからも文字が読めない → 400（「画像だけのPDFなどは読めない」旨の日本語）
+3. `ContestScoreResult` に `slides_included`・`transcript_included` を追加（何を材料に採点したかを画面に出すため）。frontend の型も同じく
+4. `routers/contest.py` の `/score`: `slide_file`（任意、.pdf/.pptx、既存の上限 20MB）を受け付け、`media_file` を任意にする。どちらも無ければ 400。スライドが2つ以上・拡張子違い・壊れたファイル（pdfplumber / python-pptx が例外を出す）は 400 と日本語（T07 の反省: 異常な入力も 500 にしない）
+5. 画面: `AudioScoreForm` にスライドの選択欄を追加し、どちらか一方があれば送れるようにする。`contestApi.scoreAudio` を `scorePitch(questionSet, mediaFile, slideFile)` に。結果画面に「スライドと音声で採点」などの表示
+6. テスト（Whisper・Jev は偽物）: スライド＋音声で state にスライドの文字と書き起こしがそのまま入る／スライドのみで Whisper を呼ばない／音声のみは従来どおり state＝書き起こし／どちらも無い→400／文字の無いスライドのみ→400／壊れたPDF・PPTX→400／拡張子違い→400／スライド2つ→400／一時フォルダの後片付け
+7. 証拠: `evals/evidence/T15/` に pytest.log、build.log、スクリーンショット、secret-scan.log、check_tasks.log
+- 承認が必要な操作: なし（実 API は呼ばない。スクリーンショットは T10 と同じく一時的なスタブで撮影し、コミットしない）
+
 ### T14 採用された提案 P4・P5 の反映（AC-00a, AC-00c, AC-00d, AC-06, AC-07）
 1. P4(a) Claude の SDK 例外 → 502: `test_question_builder.py` の `FakeAnthropic` に `error` を追加し、`anthropic.APIConnectionError` を送出するテストを足す（`review_generator._call_claude` の `except anthropic.APIConnectionError` / `except Exception` が既に502にしているので、テストの追加のみ）
 2. P4(b) 段階が空のときのエラーを日本語に: `question_builder._format_validation_error`（Pydantic の生メッセージを英語のまま繋げていた）を、既に `contest.py` の入力チェックで使っている `app.utils.validation_messages.to_japanese` に差し替える（重複コードの統一でもある）。テストで、段階が空のQuestionをClaudeが返したときの502メッセージが日本語（「Question1の段階5: 入力してください」）になることを確認
@@ -287,6 +299,21 @@
 - 修正中にもう1つ気づいた抜け: `contestApi.ts` の全関数が `reviewApi.ts` にある `API_BASE_URL`（本番でフロントエンドとバックエンドが別オリジンの場合に使う設定）に対応しておらず、相対パスに固定されていた。本番反映時に動かなくなる可能性があったため、依頼された範囲を超えるが同じ種類の抜けとして一緒に直した
 - 直し方: `getJson`・`postJson`・`scoreAudio` が共通で使う `fetchWithTimeout` ヘルパーを作り、`API_BASE_URL` 付与とタイムアウト処理を一本化（reviewApi.ts と同じパターン）
 - 確認: `npm run build` 成功、バックエンド既存テスト145件はそのまま合格、ローカルの開発サーバーで実際に一覧取得APIが動くことを確認（`VITE_API_BASE_URL` 未設定時は相対パスのまま＝今までと同じ動き）
+
+### 2026-09-27 ピッチ資料（pptx）と台本の作成（人間の依頼・T番号なし）
+- ハッカソン用の5分ピッチ資料を `pitch/harinezumi_pitch.pptx` に作成（15枚：本編14＋デモ失敗時の予備1）。人間の参考画像（`Screenshot 2026-09-27 050107.png`：オレンジ主体・重要度に青・角丸・游ゴシック）に合わせた。各スライドのノートに台本（時間・話すこと・動き）を記入
+- 生成スクリプトは scratchpad（pptxgenjs）。PowerPoint COM で全ページを画像化して目視確認し、読点の孤立・スクショの読みにくさ・余白の偏りを修正。validate.py は合格
+- `pitch/` と参考画像はまだコミットしていない
+
+### 2026-09-27 T15 コンテスト観点モードでスライドも使う
+- 人間の質問「スライド資料を入力した場合どう使われるか」に、ピッチ審査タブのみで使われ、コンテスト観点モードでは使われないと回答。その後、人間の依頼でT15を追加（基準タグの更新は人間待ち）
+- 変更: `contest_scorer.score_materials`（スライドのみ・音声のみ・両方）、`build_jev_state`（音声のみなら書き起こしをそのまま＝従来どおり、スライドがあればピッチ審査と同じ `build_user_prompt` で組み立て）、`ContestScoreResult` に `slides_included`・`transcript_included`、`/api/contest/score` に `slide_file`（任意）を追加し `media_file` も任意に。画面にスライドの選択欄と「何で採点したか」の表示
+- T07 の反省を適用: 壊れたPDF/PPTX（pdfplumber・python-pptx の例外）、文字の無いスライドのみ、拡張子違い、スライド2つ、スライド欄に文字列、はすべて日本語の400。どちらも無いときも400
+- 意図した挙動変更: 「ファイルが無い」ときの文言が「スライド資料、または発表の音声・動画ファイルを指定してください。」に変わったため、既存テスト1件（test_missing_media_file_is_400）を新しい意味（両方無い）に合わせて書き換えた
+- テスト: 161件合格（新規 `test_contest_slides.py` 16件、既存1件の更新）
+- 画面確認: 外部API（Claude・Whisper・Jev）だけを偽物にし、スライド抽出と Jev に渡す文章の組み立ては本物のコードで動かして撮影。Jev が受け取った文章（スライド本文・スピーカーノート・書き起こし）をログとして証拠に保存（`jev-state-from-ui.log`）
+- つまずき: (1) 前回 `--reload` 付きで起動したバックエンドを止めても、子プロセスがポート8000を握ったまま残り、スタブが起動できなかった → 子プロセスを特定して停止。以後は `--reload` なしで起動。(2) Vite の開発サーバーが、OneDrive 上のファイルの連続した書き換えの最後の1回を取りこぼし、古いコードを配信していた（ビルドは成功しているのに画面が真っ白）→ 開発サーバーを再起動。(3) 結果画面のボタン「別の音声でもう一度採点する」がスライドのみの採点では不正確なので「もう一度採点する」に変更
+- 証拠: `evals/evidence/T15/`
 
 ---
 

@@ -43,8 +43,10 @@ export interface ContestScoreResult {
   results: ContestCriterionResult[];
   total_points: number;
   max_total_points: number;
-  transcript: string;
+  transcript: string; // empty when scored from slides only
   generated_at: string;
+  slides_included: boolean;
+  transcript_included: boolean;
 }
 
 export interface SavedQuestionSet {
