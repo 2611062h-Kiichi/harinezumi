@@ -11,9 +11,13 @@
       "id": "T00",
       "task": "【人間】ハーネス一式を確認し、土台ブランチ（推奨: origin/feature/business-contest-rubric）から作業ブランチ feature/contest-jev-questions を作ってコミットする",
       "owner": "human",
-      "status": "todo",
-      "passes": false,
-      "evidence": [],
+      "status": "done",
+      "passes": true,
+      "evidence": [
+        "evals/evidence/T00/git.log",
+        "evals/evidence/T00/secret-scan.log",
+        "evals/evidence/T00/check_tasks.log"
+      ],
       "dependencies": [],
       "acceptance": ["AC-01"]
     },

@@ -7,11 +7,14 @@
 
 ## 引き継ぎメモ（常に最新の状態に書き換える欄）
 - **最終更新**: 2026-09-26
-- **今の作業ブランチ**: `main`（まだ作業ブランチ無し）
-- **最後に終わったこと**: ハーネス一式の作成（未コミット）
-- **次にやること**: T00（人間）→ T01（人間）と T02（AI）
-- **止まっていること / 人間待ち**: T00・T01 の人間の確認
-- **注意**: `backend/.venv` と `frontend/node_modules` は main の依存で作成済み。土台ブランチ切り替え後は `pip install -r requirements.txt` と `npm install` をやり直す（typesafe-sdk, yt-dlp などが増えるため）
+- **今の作業ブランチ**: `feature/contest-jev-questions`（土台: origin/feature/business-contest-rubric の b2dfe7f。upstream は未設定＝まだ push していない）
+- **最後に終わったこと**: T00 合格（評価役の検品: `evals/evidence/T00/review.md`）
+- **次にやること**: T01（人間が Q1〜Q3 に回答）と T02（AI・pytest 導入。T01 を待たずに着手できる）
+- **止まっていること / 人間待ち**: T01 の回答
+- **注意**:
+  - 依存関係は作業ブランチの内容で入れ直し済み（typesafe-sdk 0.7.1 の import、`npm run build` の成功を確認）
+  - `npm install` を実行すると、npm のバージョン差で `frontend/package-lock.json` の `libc` 行が消える。機能には関係ないので `git checkout -- frontend/package-lock.json` で戻す
+  - APIキーの有無（値は見ていない）: `TYPESAFE_API_KEY` は Windows の環境変数で設定済み。`ANTHROPIC_API_KEY` は未設定（`backend/.env` がダミー値のまま）。`backend/.env` には `TYPESAFE_API_KEY` の行が無い（main の .env.example から作ったため）
 
 ---
 
@@ -37,6 +40,12 @@ _（まだなし）_
 - 作成: AGENTS.md, CLAUDE.md, docs/*, tasks.json, progress.md, evals/*, .claude/skills/next-task/SKILL.md, .claude/settings.json
 - 証拠: `python evals/check_tasks.py` の結果（エラー0件）
 
+### 2026-09-26 T00 作業ブランチ作成（ユーザーの許可を得て AI が実行）
+- `git switch -c feature/contest-jev-questions origin/feature/business-contest-rubric` → ハーネスをコミット（2472589）→ `harness-baseline` タグを付けた
+- 新しいブランチが origin/feature/business-contest-rubric を upstream として追跡していたため、`git branch --unset-upstream` で外した（そのままだと `git push` が別のブランチに入ってしまう）
+- 依存関係を入れ直し、バックエンドの import とフロントエンドのビルドが通ることを確認
+- 証拠: `evals/evidence/T00/`（git.log, secret-scan.log, check_tasks.log, review.md）。評価役サブエージェントが5条件すべて○と判定
+
 ---
 
 ## 学んだこと（改善の蓄積）
@@ -44,3 +53,6 @@ _（まだなし）_
 > 人間が採用したら、AGENTS.md / docs/safety.md / SKILL.md のどこかに反映し、ここに「→反映済み（ファイル名）」と書く。
 
 - （例）Windows では `python` が別の環境を指すことがある → `backend/.venv/Scripts/python` を明示する
+- T00: `git switch -c <新> origin/<別ブランチ>` を使うと、新しいブランチがその別ブランチを追跡する設定になる。作ったらすぐ `git branch --unset-upstream` で外す
+- T00: 複数のコマンドを `&&` でつなぐと、途中のコマンドがわざと失敗させるもの（例: upstream が無いことの確認）でも、そこで後ろが止まる。証拠を取るコマンドはつなげずに1つずつ実行する
+- T00（評価役の指摘）: 秘密情報チェックの証拠に、実際に使ったコマンドと違う書き方を残していた。証拠には、実行したコマンドをそのまま記録する

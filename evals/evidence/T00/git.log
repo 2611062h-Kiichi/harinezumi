@@ -1,0 +1,28 @@
+$ git branch --show-current
+feature/contest-jev-questions
+$ git log --oneline -3
+2472589 Add AI harness for contest-question (Jev) feature
+b2dfe7f Fall back to Claude-only scoring when TYPESAFE_API_KEY is unset
+0447308 Remove ffmpeg dependency and prep for Vercel deployment
+$ git tag --points-at HEAD
+harness-baseline
+$ git show --stat --format=%s HEAD
+Add AI harness for contest-question (Jev) feature
+
+ .claude/settings.json             |  17 +++++
+ .claude/skills/next-task/SKILL.md |  45 ++++++++++++
+ AGENTS.md                         |  46 +++++++++++++
+ CLAUDE.md                         |  20 ++++++
+ docs/mission.md                   |  31 +++++++++
+ docs/requirements.md              |  91 ++++++++++++++++++++++++
+ docs/roles.md                     |  63 +++++++++++++++++
+ docs/safety.md                    |  40 +++++++++++
+ docs/voice.md                     |  23 +++++++
+ evals/acceptance.md               |  31 +++++++++
+ evals/check_tasks.py              | 123 +++++++++++++++++++++++++++++++++
+ evals/evidence/.gitkeep           |   0
+ progress.md                       |  46 +++++++++++++
+ tasks.json                        | 141 ++++++++++++++++++++++++++++++++++++++
+ 14 files changed, 717 insertions(+)
+$ git rev-parse --abbrev-ref @{upstream}
+fatal: no upstream configured for branch 'feature/contest-jev-questions'
