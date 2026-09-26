@@ -160,7 +160,8 @@
         "backend/app/models/contest.py",
         "backend/app/routers/contest.py",
         "backend/tests/test_question_set_storage.py",
-        "backend/tests/test_contest_api.py"
+        "backend/tests/test_contest_api.py",
+        "evals/evidence/T08/review.md"
       ],
       "dependencies": ["T07"],
       "acceptance": ["AC-00a", "AC-00c", "AC-00d", "AC-10"]

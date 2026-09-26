@@ -8,8 +8,8 @@
 ## 引き継ぎメモ（常に最新の状態に書き換える欄）
 - **最終更新**: 2026-09-26
 - **今の作業ブランチ**: `feature/contest-jev-questions`（土台: origin/feature/business-contest-rubric の b2dfe7f。upstream は未設定＝まだ push していない）
-- **最後に終わったこと**: T08 実装完了 → 評価役の検品待ち（status: review）
-- **次にやること**: T08 の検品 → 合格なら T09（画面: 観点入力とQuestion確認・編集）
+- **最後に終わったこと**: T08 合格（`evals/evidence/T08/review.md`）
+- **次にやること**: T09（画面: 観点入力とQuestion確認・編集）
 - **人間待ち**: なし（人間が T14 を確認して基準タグを更新済み: `harness-baseline` = f901d4b）
 - **後続タスクへの申し送り**（T03 評価役の指摘より。該当タスクの作業計画に入れること）:
   - T05: Jev に渡す `Score` の `instructions` が観点名（または観点の内容）になっていることをテストで確かめる（採用された P2(b)）
@@ -163,6 +163,8 @@
 - ファイルは `backend/data/question_sets/<uuid>.json`。ファイル名は保存側が作る UUID で、ユーザーが入力した名前をそのままファイル名にしない
 - T07 の反省を踏まえ、読み込みの id をそのままファイルパスに使わず、UUID の形だけを受け付けるようにした（`../../etc/passwd` などは 404）。実際に試すと、一部はルーティングの側で先に弾かれ、残りは自作の検査で弾かれる。どちらの経路でも 404 になることをテストで確認
 - 証拠: `evals/evidence/T08/`（pytest.log: 132 passed、secret-scan.log、check_tasks.log）
+- 評価役の検品で **合格**（AC-00a/00c/00d/10 すべて○）。評価役は id を使った読み込みの安全性を重点的に確認し、パス操作のような id が2つの異なる経路（ルーティング自体・自作の検査）でどちらも404になることを再現した。name が空、question_set が壊れているときに保存前で400になり、ファイルが作られないことも確認
+- 評価役の指摘: (1) `backend/.gitignore` が `data/reviews/*.json` は除外しているが `data/question_sets/*.json` を除外していなかった（history.py と同じ作りに揃えるべき。今回のコミットに実データの混入はない）→ このタイミングで直した。(2) `SaveQuestionSetRequest.name` が他の型の書き方（RequiredText）と不統一（動作に問題はない）→ 記録のみ
 
 ---
 
