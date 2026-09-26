@@ -2,7 +2,6 @@ import { useState } from "react";
 import { UploadForm } from "./components/UploadForm";
 import { LoadingState } from "./components/LoadingState";
 import { ReviewResult } from "./components/ReviewResult";
-import { PoweredBy } from "./components/PoweredBy";
 import { submitPitchReview, ReviewApiError } from "./api/reviewApi";
 import type { PitchReviewResponse, RubricMode } from "./types/review";
 
@@ -48,7 +47,6 @@ export default function App() {
         </div>
       )}
       {status === "success" && review && <ReviewResult review={review} onReset={handleReset} />}
-      <PoweredBy />
     </main>
   );
 }

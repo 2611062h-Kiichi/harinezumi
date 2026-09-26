@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
 import type { RubricMode } from "../types/review";
+import { PoweredBy } from "./PoweredBy";
 
 const MAX_SLIDE_MB = 20;
 const MAX_MEDIA_MB = 25; // Whisper's hard per-file limit
@@ -82,6 +83,7 @@ export function UploadForm({ onSubmit }: Props) {
   return (
     <form className="upload-form" onSubmit={handleSubmit}>
       <h1>ピッチ審査を添削するAI</h1>
+      <PoweredBy />
       <p className="lead">
         ピッチ資料（スライド）と発表の音声・動画をアップロードすると、AIが審査員として添削します。
         どちらか一方だけでも審査できます。

@@ -312,8 +312,8 @@ button:disabled {
 }
 
 .powered-by {
-  margin: 48px 0 0;
-  text-align: center;
+  margin: 0 0 16px;
+  text-align: left;
   font-size: 0.78rem;
   color: var(--text-muted);
   letter-spacing: 0.01em;
