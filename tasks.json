@@ -189,6 +189,16 @@
       "evidence": [],
       "dependencies": ["T03"],
       "acceptance": ["AC-00a", "AC-00c", "AC-00d", "AC-03", "AC-05"]
+    },
+    {
+      "id": "T14",
+      "task": "採用された提案 P4・P5 を反映する: Claude 呼び出し中の SDK 例外が 502 になるテストを追加、段階が空のときのエラーを日本語にする、段階数のテストの入力を別々の文にする、Jev の score が 0〜4 から大きく外れたらログを残して 502 にする（わずかな誤差だけ範囲内に収める）",
+      "owner": "ai",
+      "status": "todo",
+      "passes": false,
+      "evidence": [],
+      "dependencies": ["T04", "T05"],
+      "acceptance": ["AC-00a", "AC-00c", "AC-00d", "AC-06", "AC-07"]
     }
   ]
 }
