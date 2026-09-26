@@ -19,7 +19,7 @@ export function RubricPreviewPanel({ preview, editable = false, onChange }: Prop
       <ul className="rubric-preview-list">
         {preview.criteria.map((c, critIndex) => (
           <li key={c.id}>
-            <details open={editable}>
+            <details>
               <summary>
                 {editable ? (
                   <input
