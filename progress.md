@@ -8,8 +8,8 @@
 ## 引き継ぎメモ（常に最新の状態に書き換える欄）
 - **最終更新**: 2026-09-26
 - **今の作業ブランチ**: `feature/contest-jev-questions`（土台: origin/feature/business-contest-rubric の b2dfe7f。upstream は未設定＝まだ push していない）
-- **最後に終わったこと**: T04 合格（`evals/evidence/T04/review.md`）
-- **次にやること**: T05（文字起こしテキストと Questions で Jev 採点・配点換算）
+- **最後に終わったこと**: T05 実装完了 → 評価役の検品待ち（status: review）
+- **次にやること**: T05 の検品 → 合格なら T06（音声 → 文字起こし → Jev の state。空の書き起こしはエラー）
 - **人間待ち**: なし（人間が T13 を確認して基準タグを更新済み: `harness-baseline` = 429d207）
 - **後続タスクへの申し送り**（T03 評価役の指摘より。該当タスクの作業計画に入れること）:
   - T05: Jev に渡す `Score` の `instructions` が観点名（または観点の内容）になっていることをテストで確かめる（採用された P2(b)）
@@ -17,7 +17,6 @@
   - T07/T09: Claude が観点と違う順番で Question を返しても今はそのまま通る。API か画面で観点の順に並べ直すか決める（T04 評価役の指摘2）
   - T09: voice.md 2章「付け足した解釈は画面で人間に見せる」は、今の出力の型では解釈を区別できない。Question 確認画面（FR-3）で、観点の説明と Question を並べて見せるなどの方法を決める（T04 評価役の指摘1）
   - T07: API で観点を受け取るとき、配点に `"20"`・`20.0`・`true` が通らないよう strict にするか決める（今の型は Pydantic の標準の検査なので受け付ける）
-- **止まっていること / 人間待ち**: なし（基準タグ `harness-baseline` = 86bd2d7）
 - **注意**:
   - 依存関係は作業ブランチの内容で入れ直し済み（typesafe-sdk 0.7.1 の import、`npm run build` の成功を確認）
   - バックエンドのテスト: `cd backend && .venv/Scripts/python -m pytest -q`（開発用の道具は `pip install -r requirements-dev.txt`）
@@ -27,17 +26,20 @@
 ---
 
 ## 作業計画（計画役が書く・タスクごとに上書き）
-### T04 観点 → Jev の Score Question を Claude で生成（AC-00a, AC-00c, AC-00d, AC-06）
-1. `backend/app/services/question_builder.py` を新規作成: `generate_questions(rubric: ContestRubric) -> QuestionSet`
-   - Claude の呼び出しは既存の `review_generator._call_claude`（`messages.parse` ＋ Pydantic、エラーを日本語に変換済み）を使う。失敗時の文言が「AIレビュー」固定なので、引数で差し替えられるようにする（既定値は今のまま＝既存の動きは変わらない）
-   - モデルは既存の設定 `claude_model`（claude-sonnet-5）をそのまま使う
-   - Claude に求める出力の型は単純な形（criterion_id / instructions / levels の一覧）にする。SDK は API が対応しない制約（文字数など）を自動で外すため、細かい検査は T03 の `QuestionSet` で行う
-   - Claude の出力を `QuestionSet` に通し、抜け・余分・重複・段階数の誤りがあれば 502 と日本語のエラーにする（黙って直さない）
-   - プロンプトは docs/voice.md 2章に従う（1つの観点だけを聞く、低い順、観察できる事実で書く、主催者の観点の意味を変えない）
-   - ANTHROPIC_API_KEY が無ければ 400（Claude を呼ばない）
-2. `backend/tests/test_question_builder.py`（Claude は偽物）: 成功、プロンプトに観点の id・名前・説明・配点が入る、Question の抜け→エラー、余分→エラー、段階が5個でない→エラー、Claude が形の合わない出力を返した（parsed_output が None）→エラー、キー無し→400 で呼び出しなし
-3. 証拠: `evals/evidence/T04/` に pytest.log、secret-scan.log（`git add` 後に `--cached`）、check_tasks.log
-- 変更予定ファイル: 新規 `question_builder.py`・テスト、`review_generator.py`（`_call_claude` に引数を1つ追加するだけ）
+### T05 書き起こし＋Questions → Jev 採点 → 配点換算（AC-00a, AC-00c, AC-00d, AC-07）
+1. `backend/app/services/jev_scorer.py` から「Jev の呼び出しと日本語エラーへの変換」を関数 `run_system_one(state, questions)` に切り出す。既存の `score_with_jev` はそれを使うだけにする（動きは同じ。既存テストで確認）
+2. `backend/app/services/contest_scorer.py` を新規作成: `score_transcript(question_set, transcript) -> ContestScoreResult`
+   - Jev の `state` = 書き起こし文。`questions` = 観点ごとの `Score(instructions=..., criteria=levels)`（申し送り: `levels` → `criteria` に名前を変えて渡す）
+   - `instructions` の先頭に観点名を入れる（採用された P2(b)。Jev が何の観点かを取り違えないように）
+   - 配点換算はサーバーで計算: 点数 = score ÷ (段階数−1) × 配点、小数第1位で四捨五入（FR-6）。合計は各観点の点数の合計
+   - `low_confidence` = `confidence < LOW_CONFIDENCE_THRESHOLD`（申し送り。0.5 ちょうどは「低くない」）
+   - Jev の score がわずかに範囲外（0 未満・4 超）になった場合は範囲内に収める。答えが欠けている観点があれば 502
+   - 結果は観点の順（rubric の順）に並べる
+   - TYPESAFE_API_KEY が無ければ 400（黙って別方式にしない。FR-9）
+   - 空の書き起こしの扱いは T06 の範囲なので、ここでは扱わない
+3. `backend/tests/test_contest_scorer.py`（Jev は偽物）: state が書き起こし文、questions が Score 型で criteria が levels と同じ、instructions に観点名、換算例（score 3.0・5段階・配点20 → 15.0）、合計と満点、確信度 0.49/0.5 の境目、範囲外の score、答えの欠け → 502、キー無し → 400 で呼び出しなし、認証エラー → 日本語の 400、Question の順番が違っても結果は観点の順
+4. 証拠: `evals/evidence/T05/` に pytest.log、secret-scan.log（`git add` 後に `--cached`）、check_tasks.log
+- 変更予定ファイル: `jev_scorer.py`（切り出しのみ）、新規 `contest_scorer.py`・テスト
 - 承認が必要な操作: なし（実 API は呼ばない）
 
 ---
@@ -107,6 +109,15 @@
 - 評価役の検品で **合格**（AC-00a/00c/00d/06 すべて○）。評価役は SDK 1.8.0 のソースで「文字数・範囲などの制約はスキーマから外される」ことを確かめ、制約を付けた型ではスキーマのテストが落ちることも確認した
 - 評価役の指摘のうち T07・T09 に関わるもの（Question の並び順、付け足した解釈の見せ方）は申し送りへ。小さな改善は提案 P4 へ
 
+### 2026-09-26 T05 書き起こし＋Questions → Jev 採点 → 配点換算
+- 追加: `backend/app/services/contest_scorer.py`（`score_transcript`・`to_points`・`build_jev_questions`）、`backend/tests/test_contest_scorer.py`（16テスト）
+- 変更: `jev_scorer.py` から Jev の呼び出しと日本語エラーへの変換を `run_system_one` に切り出した（既存の `score_with_jev` はそれを使うだけ。既存テストはそのまま通る）
+- 申し送りへの対応: `levels` を Jev の `criteria` に名前を変えて渡す／`low_confidence` は `confidence < 0.5` から計算（0.5 ちょうどは「低くない」）／`instructions` の先頭に「【観点】観点名」を入れた（採用された P2(b)）
+- **つまずき**: 最初は Python の `round` で四捨五入したが、`round` は「ちょうど半分」を偶数の側に丸める（0.25 → 0.2）ため FR-6 の四捨五入と違った。ちょうど半分のテストを先に足して失敗を確かめてから、`Decimal` と `ROUND_HALF_UP` に直した。小数の誤差（0.3 ÷ 4 × 30 が 2.2499999… になる）も `Decimal(str(値))` で避けた
+- テストの書き間違い: 「ちょうど半分」の例に 1.125 を使ったが、小数第1位で丸めるときは半分ではなかった（→ 1.1）。2.25 の例に差し替えた
+- 結果は観点の順に並べる（Question が別の順でも）。Jev の答えが欠けた観点は 502、わずかな範囲外の score は範囲内に収める
+- 証拠: `evals/evidence/T05/`（pytest.log: 78 passed、secret-scan.log、check_tasks.log）
+
 ---
 
 ## 学んだこと（改善の蓄積）
@@ -122,4 +133,5 @@
 - T02: 「テストが全部通った」だけでは安全装置が効いている証明にならない。わざと失敗するはずの状況（モック無しの呼び出し）を作って、本当に止まるか確かめる。今回それで遮断の抜け穴が見つかった
 - T02（評価役の指摘）: 秘密情報チェックは、必ず `git add` した後に safety.md どおり `git diff --cached` で行う（`git diff` だけだと新規ファイルが漏れる）
 - T03: テストの補助関数で `x or 既定値` と書くと、空のリストや 0 が既定値にすり替わる。「指定なし」は `is None` で判定する
+- T05: Python の `round()` は四捨五入ではない（ちょうど半分は偶数側へ: 0.25 → 0.2）。四捨五入が要件なら `Decimal` の `ROUND_HALF_UP` を使い、「ちょうど半分」のテストを入れる
 - T02: Windows の非同期通信は `socket.connect` を通らない。通信を止めるときは名前解決（getaddrinfo）と asyncio の接続も止める

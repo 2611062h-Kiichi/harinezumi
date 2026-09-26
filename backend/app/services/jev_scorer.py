@@ -3,7 +3,7 @@ from dataclasses import dataclass
 
 import typesafe_sdk
 from fastapi import HTTPException
-from typesafe_sdk import AsyncTypeSafeClient, Score
+from typesafe_sdk import AsyncTypeSafeClient, Score, SystemOneResponse
 
 from app.config import get_settings
 from app.rubric import SCALE_MIN, get_rubric_criteria
@@ -17,23 +17,15 @@ class JevCriterionScore:
     confidence: float  # 0..1
 
 
-async def score_with_jev(state_text: str, mode: str) -> dict[str, JevCriterionScore]:
-    """Scores every rubric criterion for `mode` against `state_text` in a single
-    parallel Jev request, returning a continuous 1-5 score and confidence per
-    criterion id."""
+async def run_system_one(state: str, questions: dict[str, Score]) -> SystemOneResponse:
+    """Sends one Jev request, turning SDK errors into Japanese HTTP errors."""
     settings = get_settings()
     if not settings.typesafe_api_key:
         raise HTTPException(status_code=400, detail="TYPESAFE_API_KEYが設定されていません。")
 
-    criteria = get_rubric_criteria(mode)
-    questions = {
-        c["id"]: Score(instructions=c["name"], criteria=c["levels"])
-        for c in criteria
-    }
-
     try:
         async with AsyncTypeSafeClient(api_key=settings.typesafe_api_key) as client:
-            result = await client.system_one(state_text, questions)
+            return await client.system_one(state, questions)
     except typesafe_sdk.TypeSafeAuthenticationError as e:
         logger.exception("Jev authentication failed")
         raise HTTPException(status_code=400, detail="TYPESAFE_API_KEYが正しくありません。") from e
@@ -49,6 +41,19 @@ async def score_with_jev(state_text: str, mode: str) -> dict[str, JevCriterionSc
     except typesafe_sdk.TypeSafeError as e:
         logger.exception("Jev scoring failed")
         raise HTTPException(status_code=502, detail=f"Jev(TypeSafe API)エラー: {e}") from e
+
+
+async def score_with_jev(state_text: str, mode: str) -> dict[str, JevCriterionScore]:
+    """Scores every rubric criterion for `mode` against `state_text` in a single
+    parallel Jev request, returning a continuous 1-5 score and confidence per
+    criterion id."""
+    criteria = get_rubric_criteria(mode)
+    questions = {
+        c["id"]: Score(instructions=c["name"], criteria=c["levels"])
+        for c in criteria
+    }
+
+    result = await run_system_one(state_text, questions)
 
     return {
         c["id"]: JevCriterionScore(

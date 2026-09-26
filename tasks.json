@@ -97,9 +97,15 @@
       "id": "T05",
       "task": "文字起こしテキストと Questions で Jev(system_one) を呼び、配点換算と合計をサーバーで計算するサービス（contest_scorer.py）を作り、モック Jev でテストする",
       "owner": "ai",
-      "status": "todo",
+      "status": "review",
       "passes": false,
-      "evidence": [],
+      "evidence": [
+        "evals/evidence/T05/pytest.log",
+        "evals/evidence/T05/secret-scan.log",
+        "evals/evidence/T05/check_tasks.log",
+        "backend/app/services/contest_scorer.py",
+        "backend/tests/test_contest_scorer.py"
+      ],
       "dependencies": ["T03"],
       "acceptance": ["AC-00a", "AC-00c", "AC-00d", "AC-07"]
     },
