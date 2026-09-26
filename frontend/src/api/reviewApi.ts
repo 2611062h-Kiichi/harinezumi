@@ -13,10 +13,13 @@ export class ReviewApiError extends Error {}
 export async function fetchRubricPreview(
   mode: RubricMode,
   eventContext?: string | null,
+  criteriaNames?: string[] | null,
 ): Promise<RubricPreviewResponse> {
   const formData = new FormData();
   formData.append("mode", mode);
-  if (eventContext) {
+  if (criteriaNames && criteriaNames.length > 0) {
+    formData.append("criteria_names", criteriaNames.join("\n"));
+  } else if (eventContext) {
     formData.append("event_context", eventContext);
   }
 
@@ -39,13 +42,16 @@ export async function submitPitchReview(
   mediaUrl: string | null | undefined,
   mode: RubricMode,
   eventContext?: string | null,
+  criteriaNames?: string[] | null,
 ): Promise<PitchReviewResponse> {
   const formData = new FormData();
   if (slideFile) {
     formData.append("slide_file", slideFile);
   }
   formData.append("mode", mode);
-  if (eventContext) {
+  if (criteriaNames && criteriaNames.length > 0) {
+    formData.append("criteria_names", criteriaNames.join("\n"));
+  } else if (eventContext) {
     formData.append("event_context", eventContext);
   }
   if (mediaFile) {

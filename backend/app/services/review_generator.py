@@ -11,6 +11,7 @@ from app.config import get_settings
 from app.models.schemas import (
     CriterionScore,
     CustomRubricLLMOutput,
+    GeneratedLevelsOutput,
     PitchReviewLLMOutput,
     PitchReviewLLMOutputFallback,
     PitchReviewResponse,
@@ -120,6 +121,30 @@ async def generate_custom_rubric(client: AsyncAnthropic, model: str, event_conte
     ]
 
 
+RUBRIC_FROM_NAMES_SYSTEM_PROMPT = """あなたはピッチ・プレゼン審査のルーブリック設計の専門家です。
+ユーザーが指定した評価項目名それぞれについて、1点から5点までの5段階の水準説明を設計してください。
+
+厳守事項:
+- 項目名はユーザーが指定した通りに一字一句変更せず、指定された順番のまま使用すること。
+- 項目を追加したり削除したりしないこと。
+- 各levelsは低い順に5つ。各文は「〜が示されている」のように、
+  発表内容を見れば該当するかどうか判定できる具体的な表現にすること。
+"""
+
+
+async def generate_rubric_from_names(client: AsyncAnthropic, model: str, names: list[str]) -> list[dict]:
+    """Asks Claude to write 5-level descriptions for user-supplied criterion
+    names, preserving the names and order exactly as given."""
+    names_lines = chr(10).join(f"{i + 1}. {name}" for i, name in enumerate(names))
+    user_prompt = f"評価項目名:\n{names_lines}\n\nそれぞれの項目について5段階の水準説明を設計してください。"
+    result = await _call_claude(client, model, RUBRIC_FROM_NAMES_SYSTEM_PROMPT, user_prompt, GeneratedLevelsOutput)
+    # Trust the user's names/order over whatever Claude echoed back; only take the levels.
+    return [
+        {"id": f"c{i + 1}", "name": name, "levels": result.criteria[i].levels if i < len(result.criteria) else []}
+        for i, name in enumerate(names)
+    ]
+
+
 def build_system_prompt(mode_intro: str, criteria: list[dict], tone: str = DEFAULT_TONE, jev_available: bool = True) -> str:
     criteria_lines = chr(10).join(f"- {c['id']}: {c['name']}" for c in criteria)
 
@@ -224,13 +249,21 @@ async def _call_claude(
 
 
 async def resolve_rubric(
-    client: AsyncAnthropic, model: str, mode: str, event_context: str | None
+    client: AsyncAnthropic,
+    model: str,
+    mode: str,
+    event_context: str | None,
+    criteria_names: list[str] | None = None,
 ) -> tuple[list[dict], str, str]:
     """Resolves (rubric_criteria, mode_intro, rubric_label) for a mode +
-    optional event_context. Shared by generate_review() and the rubric
-    preview endpoint so both see exactly the same rubric."""
+    optional event_context/criteria_names. Shared by generate_review() and
+    the rubric preview endpoint so both see exactly the same rubric.
+    `criteria_names`, when given, takes priority over `event_context`."""
     if mode == "business":
         return BUSINESS_RUBRIC_CRITERIA, BUSINESS_INTRO, "ビジネスコンテスト向け（起業の科学ベース）"
+    if criteria_names:
+        rubric_criteria = await generate_rubric_from_names(client, model, criteria_names)
+        return rubric_criteria, build_general_intro(event_context), "汎用ピッチ審査（カスタム評価項目）"
     if event_context:
         rubric_criteria = await generate_custom_rubric(client, model, event_context)
         return rubric_criteria, build_general_intro(event_context), f"汎用ピッチ審査（{event_context}向け）"
@@ -243,6 +276,7 @@ async def generate_review(
     mode: str = DEFAULT_MODE,
     tone: str = DEFAULT_TONE,
     event_context: str | None = None,
+    criteria_names: list[str] | None = None,
 ) -> PitchReviewResponse:
     if slides is None and not transcript:
         raise HTTPException(status_code=400, detail="スライド資料または音声/動画のいずれかを指定してください。")
@@ -258,7 +292,9 @@ async def generate_review(
     client = AsyncAnthropic(api_key=settings.anthropic_api_key)
     event_context = event_context.strip() if event_context else None
 
-    rubric_criteria, mode_intro, rubric_label = await resolve_rubric(client, settings.claude_model, mode, event_context)
+    rubric_criteria, mode_intro, rubric_label = await resolve_rubric(
+        client, settings.claude_model, mode, event_context, criteria_names
+    )
 
     pitch_content = build_user_prompt(slides, transcript)
     jev_available = bool(settings.typesafe_api_key)

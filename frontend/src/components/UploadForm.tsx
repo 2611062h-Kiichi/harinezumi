@@ -14,8 +14,11 @@ const RUBRIC_MODE_OPTIONS: { id: RubricMode; label: string }[] = [
 ];
 
 const MAX_EVENT_CONTEXT_LENGTH = 300;
+const MIN_CRITERIA_NAMES = 3;
+const MAX_CRITERIA_NAMES = 10;
 
 type MediaInputType = "file" | "url";
+type RubricInputType = "event" | "manual";
 
 interface Props {
   onSubmit: (
@@ -24,6 +27,7 @@ interface Props {
     mediaUrl: string | null,
     mode: RubricMode,
     eventContext: string | null,
+    criteriaNames: string[] | null,
   ) => void;
 }
 
@@ -33,14 +37,29 @@ export function UploadForm({ onSubmit }: Props) {
   const [mediaFile, setMediaFile] = useState<File | null>(null);
   const [mediaUrl, setMediaUrl] = useState("");
   const [mode, setMode] = useState<RubricMode>("business");
+  const [rubricInputType, setRubricInputType] = useState<RubricInputType>("event");
   const [eventContext, setEventContext] = useState("");
+  const [criteriaNamesText, setCriteriaNamesText] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [rubricPreview, setRubricPreview] = useState<RubricPreviewResponse | null>(null);
   const [rubricPreviewLoading, setRubricPreviewLoading] = useState(false);
   const [rubricPreviewError, setRubricPreviewError] = useState<string | null>(null);
 
+  function parsedCriteriaNames(): string[] {
+    return criteriaNamesText
+      .split("\n")
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0);
+  }
+
   function handleModeChange(value: RubricMode) {
     setMode(value);
+    setRubricPreview(null);
+    setRubricPreviewError(null);
+  }
+
+  function handleRubricInputTypeChange(type: RubricInputType) {
+    setRubricInputType(type);
     setRubricPreview(null);
     setRubricPreviewError(null);
   }
@@ -49,7 +68,10 @@ export function UploadForm({ onSubmit }: Props) {
     setRubricPreviewLoading(true);
     setRubricPreviewError(null);
     try {
-      const preview = await fetchRubricPreview(mode, mode === "general" ? eventContext.trim() : null);
+      const preview =
+        mode === "general" && rubricInputType === "manual"
+          ? await fetchRubricPreview(mode, null, parsedCriteriaNames())
+          : await fetchRubricPreview(mode, mode === "general" ? eventContext.trim() : null);
       setRubricPreview(preview);
     } catch (err) {
       setRubricPreviewError(err instanceof ReviewApiError ? err.message : "評価基準の取得中にエラーが発生しました。");
@@ -100,12 +122,21 @@ export function UploadForm({ onSubmit }: Props) {
       setError("音声/動画のURLは http:// または https:// から始まる必要があります。");
       return;
     }
+    const useManualCriteria = mode === "general" && rubricInputType === "manual";
+    if (useManualCriteria) {
+      const names = parsedCriteriaNames();
+      if (names.length < MIN_CRITERIA_NAMES || names.length > MAX_CRITERIA_NAMES) {
+        setError(`評価項目は${MIN_CRITERIA_NAMES}〜${MAX_CRITERIA_NAMES}個で入力してください。`);
+        return;
+      }
+    }
     onSubmit(
       slideFile,
       mediaInputType === "file" ? mediaFile : null,
       mediaInputType === "url" && mediaUrl ? mediaUrl : null,
       mode,
-      mode === "general" && eventContext.trim() ? eventContext.trim() : null,
+      mode === "general" && rubricInputType === "event" && eventContext.trim() ? eventContext.trim() : null,
+      useManualCriteria ? parsedCriteriaNames() : null,
     );
   }
 
@@ -130,22 +161,63 @@ export function UploadForm({ onSubmit }: Props) {
       </label>
 
       {mode === "general" && (
-        <label className="field">
-          <span>イベント内容（任意）</span>
-          <textarea
-            rows={2}
-            maxLength={MAX_EVENT_CONTEXT_LENGTH}
-            placeholder="例: 学生団体主催のアプリ開発ハッカソン、社会人向け新規事業ピッチコンテストなど"
-            value={eventContext}
-            onChange={(e) => {
-              setEventContext(e.target.value);
-              setRubricPreview(null);
-            }}
-          />
-          <p className="note">
-            イベントの内容を入力すると、その内容に合わせてAIが専用の審査基準を作成します。空欄の場合は汎用の審査基準を使用します。
-          </p>
-        </label>
+        <div className="field">
+          <span>評価基準の指定方法（任意）</span>
+          <div className="media-input-toggle">
+            <label>
+              <input
+                type="radio"
+                name="rubric-input-type"
+                checked={rubricInputType === "event"}
+                onChange={() => handleRubricInputTypeChange("event")}
+              />
+              イベント内容から自動生成
+            </label>
+            <label>
+              <input
+                type="radio"
+                name="rubric-input-type"
+                checked={rubricInputType === "manual"}
+                onChange={() => handleRubricInputTypeChange("manual")}
+              />
+              評価項目を自分で指定
+            </label>
+          </div>
+
+          {rubricInputType === "event" ? (
+            <>
+              <textarea
+                rows={2}
+                maxLength={MAX_EVENT_CONTEXT_LENGTH}
+                placeholder="例: 学生団体主催のアプリ開発ハッカソン、社会人向け新規事業ピッチコンテストなど"
+                value={eventContext}
+                onChange={(e) => {
+                  setEventContext(e.target.value);
+                  setRubricPreview(null);
+                }}
+              />
+              <p className="note">
+                イベントの内容を入力すると、その内容に合わせてAIが専用の審査基準を作成します。空欄の場合は汎用の審査基準を使用します。
+              </p>
+            </>
+          ) : (
+            <>
+              <textarea
+                rows={4}
+                placeholder={`1行に1項目ずつ入力（${MIN_CRITERIA_NAMES}〜${MAX_CRITERIA_NAMES}個）\n例:\n課題の明確さ\n技術力\nチームワーク`}
+                value={criteriaNamesText}
+                onChange={(e) => {
+                  setCriteriaNamesText(e.target.value);
+                  setRubricPreview(null);
+                }}
+              />
+              <p className="note">
+                評価してほしい項目名を1行に1つずつ入力してください（{MIN_CRITERIA_NAMES}〜{MAX_CRITERIA_NAMES}個）。
+                各項目の1〜5点の判定基準はAIが自動生成します。
+              </p>
+            </>
+          )}
+        </div>
       )}
 
       <div className="field">

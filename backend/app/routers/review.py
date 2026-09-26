@@ -26,6 +26,28 @@ SLIDE_EXTS = {".pdf", ".pptx"}
 # track), so no local ffmpeg extraction step is needed.
 MEDIA_EXTS = {".mp3", ".mp4", ".mpeg", ".mpga", ".m4a", ".wav", ".webm"}
 MAX_EVENT_CONTEXT_LENGTH = 300
+MAX_CRITERION_NAME_LENGTH = 50
+MIN_CRITERIA_NAMES = 3
+MAX_CRITERIA_NAMES = 10
+
+
+def parse_criteria_names(raw: str | None) -> list[str] | None:
+    """Parses the newline-separated `criteria_names` form field into a
+    validated list, or None if the field was empty/omitted."""
+    if not raw or not raw.strip():
+        return None
+    names = [line.strip() for line in raw.splitlines() if line.strip()]
+    if not (MIN_CRITERIA_NAMES <= len(names) <= MAX_CRITERIA_NAMES):
+        raise HTTPException(
+            status_code=400,
+            detail=f"評価項目は{MIN_CRITERIA_NAMES}〜{MAX_CRITERIA_NAMES}個で入力してください。",
+        )
+    if any(len(name) > MAX_CRITERION_NAME_LENGTH for name in names):
+        raise HTTPException(
+            status_code=400,
+            detail=f"評価項目名は1つあたり{MAX_CRITERION_NAME_LENGTH}文字以内で入力してください。",
+        )
+    return names
 
 
 @router.get("/health")
@@ -61,6 +83,7 @@ async def transcribe_media_endpoint(file: UploadFile = File(...)):
 async def preview_rubric(
     mode: str = Form(DEFAULT_MODE),
     event_context: str | None = Form(None),
+    criteria_names: str | None = Form(None),
 ):
     if mode not in RUBRIC_MODES:
         raise HTTPException(status_code=400, detail=f"不明な審査モードです: {mode}")
@@ -69,6 +92,7 @@ async def preview_rubric(
             status_code=400,
             detail=f"イベント内容は{MAX_EVENT_CONTEXT_LENGTH}文字以内で入力してください。",
         )
+    parsed_criteria_names = parse_criteria_names(criteria_names)
 
     settings = get_settings()
     if not settings.anthropic_api_key:
@@ -76,7 +100,9 @@ async def preview_rubric(
 
     client = AsyncAnthropic(api_key=settings.anthropic_api_key)
     event_context = event_context.strip() if event_context else None
-    criteria, _, rubric_label = await resolve_rubric(client, settings.claude_model, mode, event_context)
+    criteria, _, rubric_label = await resolve_rubric(
+        client, settings.claude_model, mode, event_context, parsed_criteria_names
+    )
 
     return RubricPreviewResponse(
         rubric_mode_label=rubric_label,
@@ -92,6 +118,7 @@ async def create_review(
     mode: str = Form(DEFAULT_MODE),
     tone: str = Form(DEFAULT_TONE),
     event_context: str | None = Form(None),
+    criteria_names: str | None = Form(None),
 ):
     if mode not in RUBRIC_MODES:
         raise HTTPException(status_code=400, detail=f"不明な審査モードです: {mode}")
@@ -102,6 +129,7 @@ async def create_review(
             status_code=400,
             detail=f"イベント内容は{MAX_EVENT_CONTEXT_LENGTH}文字以内で入力してください。",
         )
+    parsed_criteria_names = parse_criteria_names(criteria_names)
     if media_file is not None and media_url:
         raise HTTPException(status_code=400, detail="音声/動画はファイルとURLのどちらか一方のみ指定してください。")
     if slide_file is None and media_file is None and not media_url:
@@ -130,7 +158,9 @@ async def create_review(
             transcription = await transcribe(media_path, media_filename)
             transcript = transcription.text
 
-        review = await review_generator.generate_review(slides, transcript, mode, tone, event_context)
+        review = await review_generator.generate_review(
+            slides, transcript, mode, tone, event_context, parsed_criteria_names
+        )
         try:
             history.save_review(review)
         except OSError:

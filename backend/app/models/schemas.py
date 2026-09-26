@@ -96,6 +96,14 @@ class CustomRubricLLMOutput(BaseModel):
     criteria: list[GeneratedCriterion] = Field(min_length=5, max_length=9)
 
 
+class GeneratedLevelsOutput(BaseModel):
+    """Schema requested from Claude to write levels for user-supplied
+    criterion names (3-10 of them — see MIN/MAX_CRITERIA_NAMES in
+    routers/review.py), so no fixed 5-9 count constraint applies here."""
+
+    criteria: list[GeneratedCriterion] = Field(min_length=1, max_length=10)
+
+
 class RubricCriterionPreview(BaseModel):
     id: str
     name: str

@@ -18,11 +18,12 @@ export default function App() {
     mediaUrl: string | null,
     mode: RubricMode,
     eventContext: string | null,
+    criteriaNames: string[] | null,
   ) {
     setStatus("submitting");
     setErrorMessage(null);
     try {
-      const result = await submitPitchReview(slideFile, mediaFile, mediaUrl, mode, eventContext);
+      const result = await submitPitchReview(slideFile, mediaFile, mediaUrl, mode, eventContext, criteriaNames);
       setReview(result);
       setStatus("success");
     } catch (err) {
