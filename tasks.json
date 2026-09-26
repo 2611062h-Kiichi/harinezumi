@@ -1,0 +1,141 @@
+{
+  "rules": [
+    "AIが変更してよいのは各タスクの status / passes / evidence だけ。",
+    "タスクの削除、task / dependencies / acceptance / owner の書き換えは禁止。新しいタスクは progress.md の「提案」に書き、人間が追加する。",
+    "status は todo / in_progress / review / done / blocked のどれか。",
+    "passes を true にできるのは評価役だけ。evidence が空なら true にしてはいけない。",
+    "変更したら python evals/check_tasks.py を実行し、エラー0件を確認する。"
+  ],
+  "tasks": [
+    {
+      "id": "T00",
+      "task": "【人間】ハーネス一式を確認し、土台ブランチ（推奨: origin/feature/business-contest-rubric）から作業ブランチ feature/contest-jev-questions を作ってコミットする",
+      "owner": "human",
+      "status": "todo",
+      "passes": false,
+      "evidence": [],
+      "dependencies": [],
+      "acceptance": ["AC-01"]
+    },
+    {
+      "id": "T01",
+      "task": "【人間】docs/requirements.md 5章の未確定事項 Q1〜Q3（土台ブランチ、Questionsの意味、TypeSafe APIキーの有無）に回答する",
+      "owner": "human",
+      "status": "todo",
+      "passes": false,
+      "evidence": [],
+      "dependencies": ["T00"],
+      "acceptance": ["AC-02"]
+    },
+    {
+      "id": "T02",
+      "task": "pytest を導入し、既存機能（配点計算、スライド抽出、/api/health、jev_scorer、transcription）の回帰テストをモックで書く",
+      "owner": "ai",
+      "status": "todo",
+      "passes": false,
+      "evidence": [],
+      "dependencies": ["T00"],
+      "acceptance": ["AC-00a", "AC-00c", "AC-00d", "AC-03", "AC-04"]
+    },
+    {
+      "id": "T03",
+      "task": "観点（ContestCriterion）・Jev用Question（JevScoreQuestion）・採点結果（ContestScoreResult）の型を backend(Pydantic) と frontend(TypeScript) に定義し、入力チェックのテストを書く",
+      "owner": "ai",
+      "status": "todo",
+      "passes": false,
+      "evidence": [],
+      "dependencies": ["T01", "T02"],
+      "acceptance": ["AC-00a", "AC-00b", "AC-00c", "AC-00d", "AC-05"]
+    },
+    {
+      "id": "T04",
+      "task": "観点から Jev の Score Question を Claude で生成するサービス（question_builder.py）を作り、モック Claude でテストする",
+      "owner": "ai",
+      "status": "todo",
+      "passes": false,
+      "evidence": [],
+      "dependencies": ["T03"],
+      "acceptance": ["AC-00a", "AC-00c", "AC-00d", "AC-06"]
+    },
+    {
+      "id": "T05",
+      "task": "文字起こしテキストと Questions で Jev(system_one) を呼び、配点換算と合計をサーバーで計算するサービス（contest_scorer.py）を作り、モック Jev でテストする",
+      "owner": "ai",
+      "status": "todo",
+      "passes": false,
+      "evidence": [],
+      "dependencies": ["T03"],
+      "acceptance": ["AC-00a", "AC-00c", "AC-00d", "AC-07"]
+    },
+    {
+      "id": "T06",
+      "task": "音声/動画 → 既存 transcribe() → Jev の state へ渡す流れを作り、空の書き起こしをエラーにする。モック Whisper でテストする",
+      "owner": "ai",
+      "status": "todo",
+      "passes": false,
+      "evidence": [],
+      "dependencies": ["T05"],
+      "acceptance": ["AC-00a", "AC-00c", "AC-00d", "AC-08"]
+    },
+    {
+      "id": "T07",
+      "task": "API を追加する: POST /api/contest/questions（観点→Questions）、POST /api/contest/score（音声＋Questions→点数）。TestClient でテストする",
+      "owner": "ai",
+      "status": "todo",
+      "passes": false,
+      "evidence": [],
+      "dependencies": ["T04", "T06"],
+      "acceptance": ["AC-00a", "AC-00c", "AC-00d", "AC-09"]
+    },
+    {
+      "id": "T08",
+      "task": "Questions セットを名前付きで保存・一覧・読み込みする API とサービスを作る（backend/data/question_sets/）",
+      "owner": "ai",
+      "status": "todo",
+      "passes": false,
+      "evidence": [],
+      "dependencies": ["T07"],
+      "acceptance": ["AC-00a", "AC-00c", "AC-00d", "AC-10"]
+    },
+    {
+      "id": "T09",
+      "task": "画面: コンテスト観点の入力フォームと、生成された Questions の確認・編集画面を作る",
+      "owner": "ai",
+      "status": "todo",
+      "passes": false,
+      "evidence": [],
+      "dependencies": ["T07"],
+      "acceptance": ["AC-00a", "AC-00b", "AC-00c", "AC-00d", "AC-11"]
+    },
+    {
+      "id": "T10",
+      "task": "画面: 音声アップロードと、観点別の点数・合計・確信度の注意を表示する結果画面を作る（保存済み Questions の選択も含む）",
+      "owner": "ai",
+      "status": "todo",
+      "passes": false,
+      "evidence": [],
+      "dependencies": ["T08", "T09"],
+      "acceptance": ["AC-00a", "AC-00b", "AC-00c", "AC-00d", "AC-12"]
+    },
+    {
+      "id": "T11",
+      "task": "【人間の承認が必要】実際の Anthropic / OpenAI / TypeSafe API とサンプル音声で1回通しの動作確認をする",
+      "owner": "ai",
+      "status": "todo",
+      "passes": false,
+      "evidence": [],
+      "dependencies": ["T10"],
+      "acceptance": ["AC-00a", "AC-00c", "AC-00d", "AC-13"]
+    },
+    {
+      "id": "T12",
+      "task": "README.md に新機能の使い方・必要なAPIキー・制約を追記する",
+      "owner": "ai",
+      "status": "todo",
+      "passes": false,
+      "evidence": [],
+      "dependencies": ["T11"],
+      "acceptance": ["AC-00c", "AC-00d", "AC-14"]
+    }
+  ]
+}

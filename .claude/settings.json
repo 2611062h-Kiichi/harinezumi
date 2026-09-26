@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "deny": [
+      "Read(./backend/.env)",
+      "Edit(./backend/.env)",
+      "Bash(git push --force:*)",
+      "Bash(git push -f:*)"
+    ],
+    "ask": [
+      "Bash(git push:*)",
+      "Bash(git reset --hard:*)",
+      "Bash(git merge:*)",
+      "Bash(git branch -D:*)",
+      "Bash(rm -rf:*)"
+    ]
+  }
+}
