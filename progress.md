@@ -8,8 +8,8 @@
 ## 引き継ぎメモ（常に最新の状態に書き換える欄）
 - **最終更新**: 2026-09-26
 - **今の作業ブランチ**: `feature/contest-jev-questions`（土台: origin/feature/business-contest-rubric の b2dfe7f。upstream は未設定＝まだ push していない）
-- **最後に終わったこと**: T13 実装完了 → 評価役の検品待ち（status: review）
-- **次にやること**: T13 の検品 → 合格なら T14（採用済みのP4・P5の反映）。T11（人間承認の実API通し確認）はサンプル音声待ちで保留中
+- **最後に終わったこと**: T13 合格（`evals/evidence/T13/review.md`）
+- **次にやること**: T14（採用済みのP4・P5の反映）。T11（人間承認の実API通し確認）はサンプル音声待ちで保留中
 - **人間待ち**: なし（人間が T14 を確認して基準タグを更新済み: `harness-baseline` = f901d4b）
 - **後続タスクへの申し送り**（T03 評価役の指摘より。該当タスクの作業計画に入れること）:
   - T05: Jev に渡す `Score` の `instructions` が観点名（または観点の内容）になっていることをテストで確かめる（採用された P2(b)）
@@ -228,6 +228,7 @@
 - P3(a): `test_contest_models.py` の「ValidationErrorになること」だけを見ていたテストに、`errors()` の `loc`（どの項目のエラーか）や具体的な文言の assert を追加。段階数0個のテストで「ちょうど5個」の文言確認を全ケースに広げた（元は0個のときだけ確認を飛ばしていたが、実際は0個でも同じ文言が出ることを確認したので統一した）
 - P3(b): `ContestCriterionResult.name` と `ContestScoreResult.contest_name` を `str` から `RequiredText`（`ContestCriterion.name` と同じ制約）に変更し、空文字・空白のみを拒否するテストを追加
 - 証拠: `evals/evidence/T13/`（pytest.log: 138 passed（既存132＋新規6）、secret-scan.log、check_tasks.log）
+- 評価役の検品で **合格**（AC-00a/00c/00d/03/05 すべて○）。評価役はリポジトリの外で PDF テストを直接実行してファイルが実在しテキストが読めることを確認し、AC-05 の強化されたテストを3パターン意図的に緩めて（誤った項目でエラーにする／型変更を戻す／段階0個のメッセージを変える）すべて検出されることを確認した。合否に影響しない指摘はなし
 
 ---
 
