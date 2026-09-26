@@ -249,6 +249,14 @@
 - 証拠: `evals/evidence/T14/`（pytest.log: 145 passed、secret-scan.log、check_tasks.log）
 - 評価役の検品で **合格**（AC-00a/00c/00d/06/07 すべて○）。評価役は T14 対象のテストだけを5回連続・mtimeフレークのテストを単体で20回連続実行してどちらも安定して成功することを確認し、P6（mtimeフレーク）が今回の変更と無関係であると裏付けた。許容誤差0.001の境界（±0.0005は成功、±0.002は502）もリポジトリの外で実測して確認。合否に影響しない指摘はP6のみ（対応済みで記録済み）
 
+### 2026-09-27 UI改善のためデザインSKILLを導入（人間の指示・T番号なし）
+- ローカルで実際に動かして画面を確認したいという人間の依頼を受け、バックエンド（uvicorn）とフロントエンド（vite dev）を起動して確認してもらった
+- 人間が https://www.tasteskill.dev/ の導入を依頼。中身を WebFetch で調査（無料・オープンソース・MITライセンス・アカウント/APIキー不要）してから `npx skills add Leonxlnx/taste-skill` を実行
+- このコマンドは同じリポジトリにまとめられていた13個のスキルすべて（`.claude/skills/` にシンボリックリンク、`.agents/skills/` に実体、`skills-lock.json`）を入れてしまった。中身（SKILL.md）はすべて目視で確認し、外部通信や秘密情報を扱うような危険な指示は無かった
+- 13個のうち、このプロジェクト（React + 素のCSS）に関係あるのは `design-taste-frontend`（tasteskill.dev 本体）と `redesign-existing-projects`（既存コードの診断・底上げ）の2つだけと判断し、人間に確認のうえ残り11個（ロゴ/モックアップ画像生成、Google Stitch専用、Codex専用、競合する作風の強制など）を削除し、`skills-lock.json` も2件だけに揃えた
+- Windows では `core.symlinks=false` のため、Git はシンボリックリンクではなく実体ファイルとしてコミットした（`.agents/skills/` と `.claude/skills/` の両方に同じ内容が入るが、Git 上は同じ blob なので二重には保存されない）
+- まだ実際のUI改善（redesign-existing-projects スキルを使った作業）は行っていない。次にやるかは人間の指示待ち
+
 ---
 
 ## 学んだこと（改善の蓄積）
