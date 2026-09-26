@@ -191,8 +191,8 @@
       "id": "T10",
       "task": "画面: 音声アップロードと、観点別の点数・合計・確信度の注意を表示する結果画面を作る（保存済み Questions の選択も含む）",
       "owner": "ai",
-      "status": "review",
-      "passes": false,
+      "status": "done",
+      "passes": true,
       "evidence": [
         "evals/evidence/T10/screenshot-01-audio-upload.png",
         "evals/evidence/T10/screenshot-02-score-result.png",
@@ -201,6 +201,7 @@
         "evals/evidence/T10/pytest.log",
         "evals/evidence/T10/secret-scan.log",
         "evals/evidence/T10/check_tasks.log",
+        "evals/evidence/T10/review.md",
         "frontend/src/api/contestApi.ts",
         "frontend/src/components/LoadingState.tsx",
         "frontend/src/components/contest"

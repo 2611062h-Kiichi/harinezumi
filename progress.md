@@ -8,8 +8,8 @@
 ## 引き継ぎメモ（常に最新の状態に書き換える欄）
 - **最終更新**: 2026-09-26
 - **今の作業ブランチ**: `feature/contest-jev-questions`（土台: origin/feature/business-contest-rubric の b2dfe7f。upstream は未設定＝まだ push していない）
-- **最後に終わったこと**: T10 実装完了 → 評価役の検品待ち（status: review）
-- **次にやること**: T10 の検品 → 合格なら T11（人間承認の実API通し確認）
+- **最後に終わったこと**: T10 合格（`evals/evidence/T10/review.md`）
+- **次にやること**: T11（人間承認の実API通し確認）
 - **人間待ち**: なし（人間が T14 を確認して基準タグを更新済み: `harness-baseline` = f901d4b）
 - **後続タスクへの申し送り**（T03 評価役の指摘より。該当タスクの作業計画に入れること）:
   - T05: Jev に渡す `Score` の `instructions` が観点名（または観点の内容）になっていることをテストで確かめる（採用された P2(b)）
@@ -211,6 +211,7 @@
 - 小さな改善: `LoadingState.tsx` に任意の `stages` プロパティを追加（既定値は今までどおりなので既存の動きは変わらない）。T09 で「Questionを生成中」の場面にピッチ審査用の文言（「スライドを解析中…」）が出ていた不正確さも、ここで直した
 - スクリーンショット（AC-12 の証拠）: T09 と同じやり方で、今回は `question_builder.generate_questions` に加えて `contest_scorer.score_audio` も固定の点数（うち1つは確信度0.35で low_confidence）を返す関数に一時的に差し替えて撮影（コミットしない）。音声アップロード画面・採点結果画面（合計点・観点別点数・確信度の注意）・保存済み一覧画面の3枚。撮影中に保存した Question セットのファイル（`backend/data/question_sets/`。gitignore 済み）は撮影後に削除した。console エラーは0件
 - 証拠: `evals/evidence/T10/`（build.log、pytest.log: 132 passed（既存機能への影響なし）、screenshot-01/02/03、secret-scan.log、check_tasks.log）
+- 評価役の検品で **合格**（AC-00a/00b/00c/00d/12 すべて○）。評価役は確信度が低い観点にだけ注意書きが出て、そうでない観点には出ていないことをスクショとコードの両方で確認。画面側が合計・観点別点数を独自に計算し直さず API の値をそのまま表示していること、保存済み選択→編集→採点の流れがコード上つながっていることも確認。合否に影響しない指摘はなし
 
 ---
 
