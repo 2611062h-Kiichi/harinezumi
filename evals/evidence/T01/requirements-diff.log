@@ -1,6 +1,6 @@
-$ git diff -- docs/requirements.md
+$ git diff 2472589 -- docs/requirements.md   # T00時点の基準から、T01の記録＋修正までの全差分
 diff --git a/docs/requirements.md b/docs/requirements.md
-index b807e02..df3820a 100644
+index b807e02..477e375 100644
 --- a/docs/requirements.md
 +++ b/docs/requirements.md
 @@ -26,7 +26,7 @@
@@ -12,15 +12,21 @@ index b807e02..df3820a 100644
  
  ---
  
-@@ -49,7 +49,7 @@
+@@ -49,10 +49,10 @@
  
  ---
  
 -## 3. 用語の解釈 [仮定・T01 で人間が確認]
-+## 3. 用語の解釈 [確定・Q2]
- - ユーザーの言う **「Questions」= Jev の `questions` 引数**（観点ごとの `Score` 質問）と解釈する。
-   - 別解釈: 「審査員が発表者にする質疑応答の質問」。もしこちらなら要件を作り直す。
- - **「TypeSafe」= Jev の提供元 TypeSafe AI 社**。同時に「入力と出力の形（型）を決めて、形が違えばエラーにする」設計方針とも一致させる。
+-- ユーザーの言う **「Questions」= Jev の `questions` 引数**（観点ごとの `Score` 質問）と解釈する。
+-  - 別解釈: 「審査員が発表者にする質疑応答の質問」。もしこちらなら要件を作り直す。
+-- **「TypeSafe」= Jev の提供元 TypeSafe AI 社**。同時に「入力と出力の形（型）を決めて、形が違えばエラーにする」設計方針とも一致させる。
++## 3. 用語の解釈
++- [確定・Q2] ユーザーの言う **「Questions」= Jev の `questions` 引数**（観点ごとの `Score` 質問）。
++  - 「審査員が発表者にする質疑応答の質問」という別解釈は、Q2 の回答で否定された。
++- [仮定・人間に未確認] **「TypeSafe」= Jev の提供元 TypeSafe AI 社**。同時に「入力と出力の形（型）を決めて、形が違えばエラーにする」設計方針とも一致させる。
+ 
+ ---
+ 
 @@ -81,11 +81,11 @@
  ---
  

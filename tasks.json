@@ -25,9 +25,15 @@
       "id": "T01",
       "task": "【人間】docs/requirements.md 5章の未確定事項 Q1〜Q3（土台ブランチ、Questionsの意味、TypeSafe APIキーの有無）に回答する",
       "owner": "human",
-      "status": "todo",
+      "status": "in_progress",
       "passes": false,
-      "evidence": [],
+      "evidence": [
+        "docs/requirements.md",
+        "evals/evidence/T01/requirements-diff.log",
+        "evals/evidence/T01/secret-scan.log",
+        "evals/evidence/T01/check_tasks.log",
+        "evals/evidence/T01/review-1.md"
+      ],
       "dependencies": ["T00"],
       "acceptance": ["AC-02"]
     },
