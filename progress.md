@@ -257,6 +257,21 @@
 - Windows では `core.symlinks=false` のため、Git はシンボリックリンクではなく実体ファイルとしてコミットした（`.agents/skills/` と `.claude/skills/` の両方に同じ内容が入るが、Git 上は同じ blob なので二重には保存されない）
 - まだ実際のUI改善（redesign-existing-projects スキルを使った作業）は行っていない。次にやるかは人間の指示待ち
 
+### 2026-09-27 UI改善（redesign-existing-projects 中心・design-taste-frontend は一部のみ）
+- 気づいたこと: `design-taste-frontend`（tasteskill.dev 本体）は「ランディングページ・ポートフォリオ向け」で、スキル自身が「ダッシュボード・複数ステップのフォーム・製品的なUIには向かない」と明記している。harinezumi は入力フォーム→生成→確認→採点という多段階のフォームアプリなので、対象外と判断。ヒーローセクション・マーケティング的な要素・GSAP等の新規ライブラリは使わず、`redesign-existing-projects`（どんなアプリにも使える汎用の監査リスト）を中心に、`design-taste-frontend` からはフォント/配色/ホバー・フォーカス反応など汎用的な部分だけを採用した
+- 診断（redesign-existing-projects の監査チェックリストと照合）: 配色・フォント・角丸・カード構造は既に無難（AI にありがちな紫グラデーションや過度な角丸は無い）。一方で、ボタンに hover/active の反応が一切無い、フォーカスリングがブラウザ既定のまま、input/textarea/select に明示的な枠線が無くブラウザごとの見た目に依存、要素の遷移（transition）が皆無、キーボード操作用の「メインコンテンツへスキップ」リンクが無い、という具体的な抜けを確認
+- 直したこと（`frontend/src/index.css`、`frontend/src/App.tsx`。新しい npm パッケージは追加していない）:
+  - 角丸を `--radius-sm/md/lg` の3段階に統一
+  - ボタン・タブ・入力欄に hover / active / focus-visible の反応と 150ms の transition を追加
+  - input/select/textarea に明示的な枠線・角丸・フォーカス時のアクセントカラーの縁取りを追加
+  - 見出し（h1/h2）の太さ・字間・行間を調整して視覚的な重みを出した
+  - カード（.upload-form 等の大枠）に、背景色と同系色（テラコッタ）を薄く乗せた影を追加（真っ黒の影ではなく色味を合わせる、というredesignスキルの指針に沿った）
+  - 観点別スコアのバーに、値が変わるときのアニメーション（width の transition）を追加
+  - キーボード操作向けに「メインコンテンツへスキップ」リンクを追加
+- 確認: `npm run build` 成功、バックエンドの既存テスト145件がそのまま合格（今回はフロントエンドのみの変更）。ローカルの開発サーバー（起動済み）に Playwright（scratchpad）でアクセスし、before/after のスクリーンショットを撮影。console エラー0件
+- 証拠: `evals/evidence/ui-redesign/`（after-01-pitch-review.png、after-02-button-hover.png、after-03-contest-form-focus.png）。T番号は無いので `evals/acceptance.md` の対象外だが、変更前後の見た目を記録する目的で残す
+- 評価役による検品は行っていない（tasks.json のタスクではないため）。人間が実際に画面で確認する想定
+
 ---
 
 ## 学んだこと（改善の蓄積）

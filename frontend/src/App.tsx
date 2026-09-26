@@ -42,6 +42,10 @@ export default function App() {
 
   return (
     <main className="app">
+      <a href="#main-content" className="skip-link">
+        メインコンテンツへスキップ
+      </a>
+
       <nav className="app-mode-tabs">
         <button
           type="button"
@@ -59,21 +63,23 @@ export default function App() {
         </button>
       </nav>
 
-      {appMode === "contest" ? (
-        <ContestQuestionsPage />
-      ) : (
-        <>
-          {status === "idle" && <UploadForm onSubmit={handleSubmit} />}
-          {status === "submitting" && <LoadingState />}
-          {status === "error" && (
-            <div className="error-panel">
-              <p className="error-text">{errorMessage}</p>
-              <button onClick={handleReset}>やり直す</button>
-            </div>
-          )}
-          {status === "success" && review && <ReviewResult review={review} onReset={handleReset} />}
-        </>
-      )}
+      <div id="main-content">
+        {appMode === "contest" ? (
+          <ContestQuestionsPage />
+        ) : (
+          <>
+            {status === "idle" && <UploadForm onSubmit={handleSubmit} />}
+            {status === "submitting" && <LoadingState />}
+            {status === "error" && (
+              <div className="error-panel">
+                <p className="error-text">{errorMessage}</p>
+                <button onClick={handleReset}>やり直す</button>
+              </div>
+            )}
+            {status === "success" && review && <ReviewResult review={review} onReset={handleReset} />}
+          </>
+        )}
+      </div>
     </main>
   );
 }
