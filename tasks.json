@@ -60,13 +60,14 @@
       "id": "T03",
       "task": "観点（ContestCriterion）・Jev用Question（JevScoreQuestion）・採点結果（ContestScoreResult）の型を backend(Pydantic) と frontend(TypeScript) に定義し、入力チェックのテストを書く",
       "owner": "ai",
-      "status": "review",
-      "passes": false,
+      "status": "done",
+      "passes": true,
       "evidence": [
         "evals/evidence/T03/pytest.log",
         "evals/evidence/T03/build.log",
         "evals/evidence/T03/secret-scan.log",
         "evals/evidence/T03/check_tasks.log",
+        "evals/evidence/T03/review.md",
         "backend/app/models/contest.py",
         "backend/tests/test_contest_models.py",
         "frontend/src/types/contest.ts"
