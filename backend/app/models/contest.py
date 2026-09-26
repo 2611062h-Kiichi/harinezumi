@@ -109,3 +109,22 @@ class ContestScoreResult(BaseModel):
     max_total_points: int = Field(ge=1)
     transcript: str
     generated_at: datetime
+
+
+class SavedQuestionSet(BaseModel):
+    """A QuestionSet stored under a user-given name for reuse (FR-8)."""
+
+    id: str
+    name: Annotated[RequiredText, StringConstraints(max_length=100)]
+    question_set: QuestionSet
+    saved_at: datetime
+
+
+class SavedQuestionSetSummary(BaseModel):
+    """The lightweight shape used for listing saved Question sets."""
+
+    id: str
+    name: str
+    contest_name: str
+    criteria_count: int
+    saved_at: datetime

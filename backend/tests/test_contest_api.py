@@ -10,7 +10,7 @@ from fastapi.testclient import TestClient
 
 from app.main import app
 from app.routers import contest as contest_router
-from app.services import jev_scorer, question_builder, transcription
+from app.services import jev_scorer, question_builder, question_set_storage, transcription
 from app.services.question_builder import GeneratedQuestion, GeneratedQuestions
 from tests.test_contest_audio import TRANSCRIPT, FakeOpenAI
 from tests.test_contest_scorer import QUESTION_SET, FakeTypeSafeClient
@@ -306,3 +306,67 @@ def test_broken_multipart_body_is_400_in_japanese(fakes, content_type, body):
 
     assert response.status_code == 400
     assert response.json()["detail"] == "送信データの形が正しくありません。画面からもう一度送信してください。"
+
+
+# --- POST/GET /api/contest/question-sets -------------------------------------------
+
+
+@pytest.fixture(autouse=True)
+def isolated_question_set_dir(tmp_path, monkeypatch):
+    monkeypatch.setattr(question_set_storage, "DATA_DIR", str(tmp_path / "question_sets"))
+
+
+def test_save_list_and_load_question_set_round_trip(fakes):
+    save_response = client.post(
+        "/api/contest/question-sets",
+        json={"name": "学生ビジコン用", "question_set": QUESTION_SET.model_dump(mode="json")},
+    )
+    assert save_response.status_code == 200
+    saved_id = save_response.json()["id"]
+
+    list_response = client.get("/api/contest/question-sets")
+    assert list_response.status_code == 200
+    summaries = list_response.json()
+    assert len(summaries) == 1
+    assert summaries[0]["id"] == saved_id
+    assert summaries[0]["name"] == "学生ビジコン用"
+    assert summaries[0]["criteria_count"] == len(QUESTION_SET.rubric.criteria)
+
+    load_response = client.get(f"/api/contest/question-sets/{saved_id}")
+    assert load_response.status_code == 200
+    body = load_response.json()
+    assert body["name"] == "学生ビジコン用"
+    assert body["question_set"]["rubric"]["contest_name"] == QUESTION_SET.rubric.contest_name
+
+
+def test_save_question_set_with_blank_name_is_400(fakes):
+    response = client.post(
+        "/api/contest/question-sets",
+        json={"name": "  ", "question_set": QUESTION_SET.model_dump(mode="json")},
+    )
+
+    assert response.status_code == 400
+
+
+def test_save_question_set_with_invalid_question_set_is_400(fakes):
+    data = QUESTION_SET.model_dump(mode="json")
+    data["questions"] = data["questions"][:1]  # drop one question
+
+    response = client.post("/api/contest/question-sets", json={"name": "x", "question_set": data})
+
+    assert response.status_code == 400
+    assert "Questionが無い観点" in response.json()["detail"]
+
+
+def test_list_question_sets_is_empty_initially(fakes):
+    response = client.get("/api/contest/question-sets")
+
+    assert response.status_code == 200
+    assert response.json() == []
+
+
+@pytest.mark.parametrize("saved_id", ["00000000-0000-0000-0000-000000000000", "../../etc/passwd", "not-a-uuid"])
+def test_load_unknown_or_malformed_question_set_id_is_404(fakes, saved_id):
+    response = client.get(f"/api/contest/question-sets/{saved_id}")
+
+    assert response.status_code == 404

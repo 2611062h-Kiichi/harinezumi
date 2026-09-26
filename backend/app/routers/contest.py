@@ -15,9 +15,15 @@ from starlette.datastructures import UploadFile
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.config import get_settings
-from app.models.contest import ContestRubric, ContestScoreResult, QuestionSet
+from app.models.contest import (
+    ContestRubric,
+    ContestScoreResult,
+    QuestionSet,
+    SavedQuestionSet,
+    SavedQuestionSetSummary,
+)
 from app.routers.review import MEDIA_EXTS
-from app.services import contest_scorer, question_builder
+from app.services import contest_scorer, question_builder, question_set_storage
 from app.utils.file_validation import save_temp_upload, validate_upload
 from app.utils.validation_messages import to_japanese
 
@@ -39,10 +45,31 @@ def parse_json(raw: str | bytes, model: type[BaseModel], what: str):
         raise HTTPException(status_code=400, detail=f"{what}に誤りがあります。{to_japanese(e)}") from e
 
 
+class SaveQuestionSetRequest(BaseModel):
+    name: str
+    question_set: QuestionSet
+
+
 @router.post("/questions", response_model=QuestionSet)
 async def create_questions(request: Request):
     rubric = parse_json(await request.body(), ContestRubric, "採点観点")
     return await question_builder.generate_questions(rubric)
+
+
+@router.post("/question-sets", response_model=SavedQuestionSet)
+async def save_question_set(request: Request):
+    body = parse_json(await request.body(), SaveQuestionSetRequest, "保存内容")
+    return question_set_storage.save(body.name, body.question_set)
+
+
+@router.get("/question-sets", response_model=list[SavedQuestionSetSummary])
+async def list_question_sets():
+    return question_set_storage.list_all()
+
+
+@router.get("/question-sets/{saved_id}", response_model=SavedQuestionSet)
+async def get_question_set(saved_id: str):
+    return question_set_storage.load(saved_id)
 
 
 @router.post("/score", response_model=ContestScoreResult)

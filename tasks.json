@@ -150,9 +150,18 @@
       "id": "T08",
       "task": "Questions セットを名前付きで保存・一覧・読み込みする API とサービスを作る（backend/data/question_sets/）",
       "owner": "ai",
-      "status": "todo",
+      "status": "review",
       "passes": false,
-      "evidence": [],
+      "evidence": [
+        "evals/evidence/T08/pytest.log",
+        "evals/evidence/T08/secret-scan.log",
+        "evals/evidence/T08/check_tasks.log",
+        "backend/app/services/question_set_storage.py",
+        "backend/app/models/contest.py",
+        "backend/app/routers/contest.py",
+        "backend/tests/test_question_set_storage.py",
+        "backend/tests/test_contest_api.py"
+      ],
       "dependencies": ["T07"],
       "acceptance": ["AC-00a", "AC-00c", "AC-00d", "AC-10"]
     },

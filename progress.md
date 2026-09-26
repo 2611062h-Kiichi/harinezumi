@@ -8,8 +8,8 @@
 ## 引き継ぎメモ（常に最新の状態に書き換える欄）
 - **最終更新**: 2026-09-26
 - **今の作業ブランチ**: `feature/contest-jev-questions`（土台: origin/feature/business-contest-rubric の b2dfe7f。upstream は未設定＝まだ push していない）
-- **最後に終わったこと**: T07 合格（2回目の検品。`evals/evidence/T07/review.md`）
-- **次にやること**: T08（Questions セットの保存・一覧・読み込み）
+- **最後に終わったこと**: T08 実装完了 → 評価役の検品待ち（status: review）
+- **次にやること**: T08 の検品 → 合格なら T09（画面: 観点入力とQuestion確認・編集）
 - **人間待ち**: なし（人間が T14 を確認して基準タグを更新済み: `harness-baseline` = f901d4b）
 - **後続タスクへの申し送り**（T03 評価役の指摘より。該当タスクの作業計画に入れること）:
   - T05: Jev に渡す `Score` の `instructions` が観点名（または観点の内容）になっていることをテストで確かめる（採用された P2(b)）
@@ -28,21 +28,22 @@
 ---
 
 ## 作業計画（計画役が書く・タスクごとに上書き）
-### T07 API: 観点→Questions、音声＋Questions→点数（AC-00a, AC-00c, AC-00d, AC-09）
-1. `backend/app/routers/contest.py` を新規作成し、`main.py` に登録する
-   - `POST /api/contest/questions`: JSON で観点（ContestRubric）を受け取り、`generate_questions` の結果（QuestionSet）を返す
-   - `POST /api/contest/score`: multipart で `media_file`（音声/動画）と `question_set`（QuestionSet の JSON 文字列）を受け取り、`score_audio` の結果（ContestScoreResult）を返す
-   - 入力の検査は自分で行い、形の誤りは **400 と日本語のエラー**にする（FastAPI 標準の 422・英語のエラーにしない。AC-09「不正な観点400」、NFR-3）。ファイルや question_set が無いときも 400
-2. Pydantic の英語のエラーを日本語に直す小さな関数 `backend/app/utils/validation_messages.py`（どの観点のどの項目か＋何が悪いか。例:「観点2の配点: 1以上にしてください」）
-3. 申し送りへの対応（ここで決めること）:
-   - 配点は **厳密に整数だけ** 受け付ける（`"20"`・`20.0`・`true` は 400）。`contest.py` の `max_points` を strict にする（T03 の型に1か所追加）
-   - Question の並び順: `generate_questions` が返す前に **観点の順に並べ直す**（T04 の指摘2）
-   - 受け付ける音声・動画の拡張子は既存の審査と同じ（mp3/mp4/mpeg/mpga/m4a/wav/webm）。**mp4 のテスト** を入れる（T06 の指摘2）
-   - 一時ファイル: 保存用の一時フォルダは成功でもエラーでも必ず消す。**エラーのときも消えるテスト** を入れる（T06 の指摘3）
-4. `backend/tests/test_contest_api.py`（TestClient。Claude・Whisper・Jev は偽物）: 各 API の成功 200、不正な観点 400（日本語）、配点 "20" 400、壊れた JSON 400、キー未設定の日本語エラー、対応外の拡張子 400、question_set の観点と Question の食い違い 400、mp4、一時フォルダの後片付け（成功・エラー両方）
-5. 証拠: `evals/evidence/T07/` に pytest.log、secret-scan.log、check_tasks.log（1行目は実行コマンドと同じ変数から）
-- 変更予定ファイル: 新規 `routers/contest.py`・`utils/validation_messages.py`・テスト、`main.py`（登録1行）、`models/contest.py`（strict 1か所）、`services/question_builder.py`（並べ直し）
-- 承認が必要な操作: なし（実 API は呼ばない）
+### T08 Questions セットの保存・一覧・読み込み（AC-00a, AC-00c, AC-00d, AC-10）
+1. `backend/app/models/contest.py` に `SavedQuestionSet`（id・name・question_set・saved_at）と `SavedQuestionSetSummary`（id・name・contest_name・criteria_count・saved_at。一覧表示用の軽い形）を追加
+2. `backend/app/services/question_set_storage.py` を新規作成（`history.py` と同じ作りに揃える）
+   - `save(name, question_set) -> SavedQuestionSet`: `backend/data/question_sets/<uuid>.json` に保存。名前は必須（空白のみは拒否）
+   - `list_all() -> list[SavedQuestionSetSummary]`: 保存日時の新しい順
+   - `load(id) -> SavedQuestionSet`: 無ければ見つからない旨のエラー
+   - ファイル名に使う id は保存側で作る UUID（ユーザー入力の name をそのままファイル名にしない）
+3. `backend/app/routers/contest.py` に3つの窓口を追加。入力チェックは他の窓口と同じやり方（400・日本語）
+   - `POST /api/contest/question-sets`（name・question_set を受け取り保存）
+   - `GET /api/contest/question-sets`（一覧）
+   - `GET /api/contest/question-sets/{id}`（読み込み。無ければ404）
+4. `backend/tests/test_question_set_storage.py`：保存→一覧→読み込みで同じ内容に戻る（AC-10）、一覧が複数件で新しい順、無い id は分かるエラー、名前が空は拒否
+5. `backend/tests/test_contest_api.py` に3つの窓口のテストを追記（成功・不正な入力400・存在しないid→404）
+6. 証拠: `evals/evidence/T08/` に pytest.log、secret-scan.log、check_tasks.log（1行目は実行コマンドと同じ変数から）
+- 変更予定ファイル: `models/contest.py`（追加のみ）、新規 `question_set_storage.py`・テスト、`routers/contest.py`（追記）
+- 承認が必要な操作: なし（保存先はテストでは一時フォルダ。本番の保存先はコードに書くだけで、削除やアクセス権の変更は行わない）
 
 ---
 
@@ -156,6 +157,12 @@
 - 修正後: pytest 114 passed（`evals/evidence/T07/pytest.log` を作り直した）
 - **再検品で合格**（AC-00a/00c/00d/09 すべて○）。評価役は修正前のコード（4451919）で新しいテスト8件が失敗することを確認し、さらに約50通りの異常な入力で英語のエラー・422・500 が0件であることを確かめた
 - 再検品の小さな指摘（記録のみ。必要なら提案にする）: question_set を2つ送ると後ろが黙って使われる／終わりの区切りが無い multipart で案内の文言が原因と違う／question_set の上限超えの文言が送り方で違う／深い入れ子のテストが文言まで見ていない／`to_japanese` が知らない種類のエラーは「入力が正しくありません」だけになる
+
+### 2026-09-26 T08 Questions セットの保存・一覧・読み込み
+- 追加: `SavedQuestionSet`・`SavedQuestionSetSummary`（models/contest.py）、`question_set_storage.py`（save/list_all/load。`history.py` と同じ作り）、窓口3つ（`POST/GET /api/contest/question-sets`、`GET /api/contest/question-sets/{id}`）、`test_question_set_storage.py`（8テスト）とAPIテスト追記（7件）
+- ファイルは `backend/data/question_sets/<uuid>.json`。ファイル名は保存側が作る UUID で、ユーザーが入力した名前をそのままファイル名にしない
+- T07 の反省を踏まえ、読み込みの id をそのままファイルパスに使わず、UUID の形だけを受け付けるようにした（`../../etc/passwd` などは 404）。実際に試すと、一部はルーティングの側で先に弾かれ、残りは自作の検査で弾かれる。どちらの経路でも 404 になることをテストで確認
+- 証拠: `evals/evidence/T08/`（pytest.log: 132 passed、secret-scan.log、check_tasks.log）
 
 ---
 
