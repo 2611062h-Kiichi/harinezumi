@@ -289,6 +289,25 @@
       ],
       "dependencies": ["T10", "T14"],
       "acceptance": ["AC-00a", "AC-00b", "AC-00c", "AC-00d", "AC-08", "AC-09", "AC-12"]
+    },
+    {
+      "id": "T16",
+      "task": "採用された提案 P6 を反映する: 保存済み Questions の一覧の並び順を、ファイルの更新時刻ではなく保存内容の saved_at（保存日時）で決めるようにし、続けて保存しても新しい順が必ず守られるようにする。不安定だったテストが安定して通ることを繰り返し実行で確かめる",
+      "owner": "ai",
+      "status": "review",
+      "passes": false,
+      "evidence": [
+        "evals/evidence/T16/pytest.log",
+        "evals/evidence/T16/before-fix.log",
+        "evals/evidence/T16/repeat.log",
+        "evals/evidence/T16/repeat-full.log",
+        "evals/evidence/T16/secret-scan.log",
+        "evals/evidence/T16/check_tasks.log",
+        "backend/app/services/question_set_storage.py",
+        "backend/tests/test_question_set_storage.py"
+      ],
+      "dependencies": ["T08"],
+      "acceptance": ["AC-00a", "AC-00c", "AC-00d", "AC-10"]
     }
   ]
 }
