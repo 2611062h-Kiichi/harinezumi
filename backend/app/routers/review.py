@@ -20,6 +20,7 @@ from app.services import history, review_generator, slide_extractor
 from app.services.media_url import download_audio_from_url
 from app.services.review_generator import DEFAULT_TONE, TONE_LABELS, resolve_rubric
 from app.services.transcription import transcribe
+from app.services.video_frames import extract_frames_base64, is_video_file
 from app.utils.file_validation import save_temp_upload, validate_upload
 
 router = APIRouter(prefix="/api")
@@ -175,8 +176,11 @@ async def create_review(
             slides = slide_extractor.extract_slides(slide_path, slide_file.filename)
 
         transcript = None
+        video_frames = None
         if media_file is not None:
             media_path = save_temp_upload(media_file, tmp_dir)
+            if is_video_file(media_file.filename):
+                video_frames = extract_frames_base64(media_path)
             transcription = await transcribe(media_path, media_file.filename)
             transcript = transcription.text
         elif media_url:
@@ -185,7 +189,7 @@ async def create_review(
             transcript = transcription.text
 
         review = await review_generator.generate_review(
-            slides, transcript, mode, tone, event_context, parsed_criteria_names, parsed_custom_rubric
+            slides, transcript, mode, tone, event_context, parsed_criteria_names, parsed_custom_rubric, video_frames
         )
         try:
             history.save_review(review)

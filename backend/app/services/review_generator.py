@@ -167,10 +167,17 @@ def build_system_prompt(mode_intro: str, criteria: list[dict], tone: str = DEFAU
 
 {TONE_INSTRUCTIONS[tone]}
 改善提案は抽象的な精神論ではなく、実際にスライドや発表内容のどこをどう直すべきかが分かる具体的な内容にしてください。
+ユーザーメッセージに「発表映像から読み取れる非言語的表現」のセクションがある場合、
+プレゼンの分かりやすさ・訴求力に関する評価項目では、話の内容だけでなく
+その非言語的な要素（身振り・表情など）も踏まえて判断してください。
 """
 
 
-def build_user_prompt(slides: SlideExtractionResult | None, transcript: str | None) -> str:
+def build_user_prompt(
+    slides: SlideExtractionResult | None,
+    transcript: str | None,
+    visual_description: str | None = None,
+) -> str:
     parts = []
     if slides:
         slide_sections = []
@@ -188,6 +195,9 @@ def build_user_prompt(slides: SlideExtractionResult | None, transcript: str | No
         parts.append(f"# 発表音声の書き起こし\n{transcript}")
     else:
         parts.append("# 発表音声の書き起こし\n音声書き起こしはありません。スライドの内容のみで審査してください。")
+
+    if visual_description:
+        parts.append(f"# 発表映像から読み取れる非言語的表現\n{visual_description}")
 
     return "\n\n".join(parts)
 
@@ -248,6 +258,48 @@ async def _call_claude(
     return response.parsed_output
 
 
+VISUAL_DESCRIPTION_SYSTEM_PROMPT = """あなたはピッチ発表の映像を分析する専門家です。
+与えられた画像は、ある発表の動画から均等な間隔で抽出した複数枚の静止画です。
+これらの画像から読み取れる、プレゼンテーションの非言語的な要素
+（表情、姿勢、身振り手振り、資料の指し示し方、カメラ・聴衆へのアイコンタクトなど）を、
+日本語で簡潔に説明してください。
+
+- 画像から客観的に観察できる事実のみを記述し、断定しすぎないこと。
+- スライドの内容そのものの説明は不要です。発表者の様子・非言語的な表現方法のみに注目してください。
+- 数枚の静止画だけからの推測であることを踏まえ、過度に強い評価コメントは避けてください。
+"""
+
+
+async def describe_presentation_visuals(client: AsyncAnthropic, model: str, frames_base64: list[str]) -> str | None:
+    """Asks Claude (vision) to describe non-verbal presentation delivery
+    (posture, gestures, eye contact, etc.) from a handful of video frames.
+    Returns None on any failure — this is a nice-to-have enrichment, not a
+    required step, so callers should just proceed without it on failure."""
+    if not frames_base64:
+        return None
+
+    content = [
+        {"type": "image", "source": {"type": "base64", "media_type": "image/jpeg", "data": f}} for f in frames_base64
+    ]
+    content.append(
+        {"type": "text", "text": "これらは発表動画から抽出した静止画です。発表者の非言語的な表現について説明してください。"}
+    )
+
+    try:
+        response = await client.messages.create(
+            model=model,
+            max_tokens=1024,
+            system=VISUAL_DESCRIPTION_SYSTEM_PROMPT,
+            messages=[{"role": "user", "content": content}],
+        )
+    except Exception:
+        logger.warning("Visual description generation failed; continuing without it", exc_info=True)
+        return None
+
+    text_blocks = [b.text for b in response.content if b.type == "text"]
+    return "\n".join(text_blocks) if text_blocks else None
+
+
 async def resolve_rubric(
     client: AsyncAnthropic,
     model: str,
@@ -282,6 +334,7 @@ async def generate_review(
     event_context: str | None = None,
     criteria_names: list[str] | None = None,
     custom_criteria: list[dict] | None = None,
+    video_frames_base64: list[str] | None = None,
 ) -> PitchReviewResponse:
     if slides is None and not transcript:
         raise HTTPException(status_code=400, detail="スライド資料または音声/動画のいずれかを指定してください。")
@@ -301,7 +354,8 @@ async def generate_review(
         client, settings.claude_model, mode, event_context, criteria_names, custom_criteria
     )
 
-    pitch_content = build_user_prompt(slides, transcript)
+    visual_description = await describe_presentation_visuals(client, settings.claude_model, video_frames_base64 or [])
+    pitch_content = build_user_prompt(slides, transcript, visual_description)
     jev_available = bool(settings.typesafe_api_key)
 
     if jev_available:
