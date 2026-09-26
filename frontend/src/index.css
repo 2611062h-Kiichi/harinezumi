@@ -303,6 +303,49 @@ button:disabled {
   font-weight: 600;
 }
 
+.criterion-levels {
+  margin-top: 10px;
+}
+
+.criterion-levels summary {
+  cursor: pointer;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--accent-2);
+  user-select: none;
+}
+
+.criterion-levels ol {
+  margin: 10px 0 0;
+  padding-left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.criterion-levels li {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+
+.criterion-level-num {
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.criterion-level-achieved {
+  color: var(--text);
+  background: var(--glass-bg-strong);
+  border-radius: 8px;
+  padding: 4px 8px;
+  margin-left: -8px;
+}
+
+.criterion-level-achieved .criterion-level-num {
+  color: var(--accent-2);
+}
+
 .improvements li {
   margin-bottom: 14px;
   color: var(--text);

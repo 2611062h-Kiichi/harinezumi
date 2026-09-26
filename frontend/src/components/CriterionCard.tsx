@@ -19,6 +19,18 @@ export function CriterionCard({ criterion }: { criterion: CriterionScore }) {
       {criterion.confidence != null && (
         <p className="criterion-confidence">AI確信度: {Math.round(criterion.confidence * 100)}%</p>
       )}
+      {criterion.levels.length > 0 && (
+        <details className="criterion-levels">
+          <summary>審査基準を見る</summary>
+          <ol>
+            {criterion.levels.map((level, i) => (
+              <li key={i} className={i + 1 === criterion.score ? "criterion-level-achieved" : undefined}>
+                <span className="criterion-level-num">{i + 1}点</span> {level}
+              </li>
+            ))}
+          </ol>
+        </details>
+      )}
     </div>
   );
 }

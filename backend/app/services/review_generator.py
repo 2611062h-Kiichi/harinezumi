@@ -277,6 +277,7 @@ async def generate_review(
                 max_score=SCALE_MAX,
                 comment=comments_by_id.get(c["id"], ""),
                 confidence=jev_scores[c["id"]].confidence,
+                levels=c["levels"],
             )
             for c in rubric_criteria
         ]
@@ -298,6 +299,7 @@ async def generate_review(
                 max_score=SCALE_MAX,
                 comment=scores_by_id[c["id"]].comment if c["id"] in scores_by_id else "",
                 confidence=None,
+                levels=c["levels"],
             )
             for c in rubric_criteria
         ]

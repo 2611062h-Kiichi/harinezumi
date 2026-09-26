@@ -26,6 +26,7 @@ class CriterionScore(BaseModel):
     max_score: int = 5
     comment: str
     confidence: float | None = Field(default=None, ge=0, le=1)
+    levels: list[str]
 
 
 class ImprovementSuggestion(BaseModel):
