@@ -310,3 +310,23 @@ button:disabled {
 .reset-button {
   margin-top: 36px;
 }
+
+.powered-by {
+  margin: 48px 0 0;
+  text-align: center;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  letter-spacing: 0.01em;
+}
+
+.powered-by-name {
+  background: var(--gradient);
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  font-weight: 600;
+}
+
+.powered-by-sep {
+  color: var(--text-muted);
+}
