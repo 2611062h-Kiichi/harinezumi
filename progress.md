@@ -8,8 +8,8 @@
 ## 引き継ぎメモ（常に最新の状態に書き換える欄）
 - **最終更新**: 2026-09-26
 - **今の作業ブランチ**: `feature/contest-jev-questions`（土台: origin/feature/business-contest-rubric の b2dfe7f。upstream は未設定＝まだ push していない）
-- **最後に終わったこと**: T05 合格（`evals/evidence/T05/review.md`）
-- **次にやること**: T06（音声 → 文字起こし → Jev の state。空の書き起こしはエラー）
+- **最後に終わったこと**: T06 実装完了 → 評価役の検品待ち（status: review）
+- **次にやること**: T06 の検品 → 合格なら T07（API: 観点→Questions、音声＋Questions→点数）
 - **人間待ち**: T14 を追加したので、確認後に `git tag -f harness-baseline`
 - **後続タスクへの申し送り**（T03 評価役の指摘より。該当タスクの作業計画に入れること）:
   - T05: Jev に渡す `Score` の `instructions` が観点名（または観点の内容）になっていることをテストで確かめる（採用された P2(b)）
@@ -26,20 +26,13 @@
 ---
 
 ## 作業計画（計画役が書く・タスクごとに上書き）
-### T05 書き起こし＋Questions → Jev 採点 → 配点換算（AC-00a, AC-00c, AC-00d, AC-07）
-1. `backend/app/services/jev_scorer.py` から「Jev の呼び出しと日本語エラーへの変換」を関数 `run_system_one(state, questions)` に切り出す。既存の `score_with_jev` はそれを使うだけにする（動きは同じ。既存テストで確認）
-2. `backend/app/services/contest_scorer.py` を新規作成: `score_transcript(question_set, transcript) -> ContestScoreResult`
-   - Jev の `state` = 書き起こし文。`questions` = 観点ごとの `Score(instructions=..., criteria=levels)`（申し送り: `levels` → `criteria` に名前を変えて渡す）
-   - `instructions` の先頭に観点名を入れる（採用された P2(b)。Jev が何の観点かを取り違えないように）
-   - 配点換算はサーバーで計算: 点数 = score ÷ (段階数−1) × 配点、小数第1位で四捨五入（FR-6）。合計は各観点の点数の合計
-   - `low_confidence` = `confidence < LOW_CONFIDENCE_THRESHOLD`（申し送り。0.5 ちょうどは「低くない」）
-   - Jev の score がわずかに範囲外（0 未満・4 超）になった場合は範囲内に収める。答えが欠けている観点があれば 502
-   - 結果は観点の順（rubric の順）に並べる
-   - TYPESAFE_API_KEY が無ければ 400（黙って別方式にしない。FR-9）
-   - 空の書き起こしの扱いは T06 の範囲なので、ここでは扱わない
-3. `backend/tests/test_contest_scorer.py`（Jev は偽物）: state が書き起こし文、questions が Score 型で criteria が levels と同じ、instructions に観点名、換算例（score 3.0・5段階・配点20 → 15.0）、合計と満点、確信度 0.49/0.5 の境目、範囲外の score、答えの欠け → 502、キー無し → 400 で呼び出しなし、認証エラー → 日本語の 400、Question の順番が違っても結果は観点の順
-4. 証拠: `evals/evidence/T05/` に pytest.log、secret-scan.log（`git add` 後に `--cached`）、check_tasks.log
-- 変更予定ファイル: `jev_scorer.py`（切り出しのみ）、新規 `contest_scorer.py`・テスト
+### T06 音声 → 文字起こし → Jev の state（AC-00a, AC-00c, AC-00d, AC-08）
+1. `backend/app/services/contest_scorer.py` に `score_audio(question_set, audio_path, filename)` を追加
+   - 既存の `transcribe()`（Whisper）で文字起こしし、その文章を **そのまま** `score_transcript` に渡す（Jev の state になる）
+2. `score_transcript` の入口で、空・空白だけの書き起こしを 400 と日本語のエラーにする（FR-4）。Jev は呼ばない。音声からでも文字の直接入力からでも同じ検査がかかるように、ここに置く
+3. `backend/tests/test_contest_audio.py`（Whisper と Jev は偽物）: Whisper の出力が Jev の state にそのまま入る、Whisper に音声ファイルの中身が渡る、書き起こしが空／空白だけ → 400 で Jev を呼ばない、OPENAI_API_KEY が無い → 400 で Whisper も Jev も呼ばない、結果の transcript が書き起こし文
+4. 証拠: `evals/evidence/T06/` に pytest.log、secret-scan.log（`git add` 後に `--cached`）、check_tasks.log。**1行目のコマンドは、実行するコマンドと同じ変数から書き出す**（T05 の P1 違反の再発防止）
+- 変更予定ファイル: `contest_scorer.py`、新規テスト
 - 承認が必要な操作: なし（実 API は呼ばない）
 
 ---
@@ -124,6 +117,12 @@
 ### 2026-09-26 採用された提案 P4・P5 の記録と一時ファイルの削除
 - 人間「提案2つを採用します」→ P4・P5 を新しいタスク T14 として tasks.json に追加（人間の決定による追加。基準タグの更新は人間待ち。それまで check_tasks は T14 について警告を出す）
 - 人間「一時ファイルの残りかすを消してもよいです」→ `backend/tests/__pycache__/test_zz_tmp_unmocked.cpython-314-pytest-9.1.1.pyc`（T02 の一時テストの残り。対応する .py は無く、git 管理外）を削除した
+
+### 2026-09-26 T06 音声 → 文字起こし → Jev の state
+- 追加: `contest_scorer.score_audio`（Whisper の書き起こしを、そのまま `score_transcript` に渡す）、`backend/tests/test_contest_audio.py`（7テスト）
+- 変更: `score_transcript` の入口で、空・空白だけの書き起こしを 400 と日本語のエラーにする（Jev は呼ばない）。音声からでも文字の直接入力からでも同じ検査がかかる
+- 書き起こしの前後の空白も削らずにそのまま Jev に渡す（AC-08「そのまま入る」）。OPENAI_API_KEY が無いときは Whisper も Jev も呼ばずに止まる
+- 証拠: `evals/evidence/T06/`（pytest.log: 85 passed、secret-scan.log、check_tasks.log）。ログの1行目は、実行するコマンドと同じ変数から書き出した
 
 ---
 

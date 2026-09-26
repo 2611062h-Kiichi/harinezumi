@@ -18,6 +18,7 @@ from app.models.contest import (
     QuestionSet,
 )
 from app.services.jev_scorer import run_system_one
+from app.services.transcription import transcribe
 
 logger = logging.getLogger(__name__)
 
@@ -45,6 +46,12 @@ def to_points(jev_score: float, level_count: int, max_points: int) -> float:
 
 
 async def score_transcript(question_set: QuestionSet, transcript: str) -> ContestScoreResult:
+    if not transcript.strip():
+        raise HTTPException(
+            status_code=400,
+            detail="発表の文字起こしが空です。音声に話し声が入っているか確認して、もう一度お試しください。",
+        )
+
     questions = build_jev_questions(question_set)
     response = await run_system_one(transcript, questions)
 
@@ -82,3 +89,9 @@ async def score_transcript(question_set: QuestionSet, transcript: str) -> Contes
         transcript=transcript,
         generated_at=datetime.now(timezone.utc),
     )
+
+
+async def score_audio(question_set: QuestionSet, audio_path: str, filename: str) -> ContestScoreResult:
+    """Transcribes the pitch with Whisper and scores the text as-is with Jev."""
+    transcription = await transcribe(audio_path, filename)
+    return await score_transcript(question_set, transcription.text)
