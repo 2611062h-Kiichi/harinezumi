@@ -1,4 +1,4 @@
-import type { FeedbackTone, PitchReviewResponse, RubricMode } from "../types/review";
+import type { PitchReviewResponse, RubricMode } from "../types/review";
 
 const REQUEST_TIMEOUT_MS = 5 * 60 * 1000;
 
@@ -15,14 +15,12 @@ export async function submitPitchReview(
   mediaFile: File | null | undefined,
   mediaUrl: string | null | undefined,
   mode: RubricMode,
-  tone: FeedbackTone,
 ): Promise<PitchReviewResponse> {
   const formData = new FormData();
   if (slideFile) {
     formData.append("slide_file", slideFile);
   }
   formData.append("mode", mode);
-  formData.append("tone", tone);
   if (mediaFile) {
     formData.append("media_file", mediaFile);
   } else if (mediaUrl) {

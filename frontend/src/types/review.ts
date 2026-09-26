@@ -28,4 +28,3 @@ export interface PitchReviewResponse {
 }
 
 export type RubricMode = "business" | "general";
-export type FeedbackTone = "mild" | "normal" | "spicy";
