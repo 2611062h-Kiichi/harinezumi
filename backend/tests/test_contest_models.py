@@ -33,6 +33,12 @@ def error_text(excinfo) -> str:
     return str(excinfo.value)
 
 
+def error_locations(excinfo) -> list[tuple]:
+    """The pydantic error's `loc` per error, so a test can confirm *which*
+    field or item failed rather than only that something did."""
+    return [tuple(e["loc"]) for e in excinfo.value.errors()]
+
+
 # --- valid input ---------------------------------------------------------------
 
 
@@ -62,40 +68,56 @@ def test_fifteen_criteria_is_the_upper_limit():
 # --- AC-05: rejected input -----------------------------------------------------
 
 
-@pytest.mark.parametrize("points", [0, -5, 101])
-def test_points_out_of_range_are_rejected(points):
-    with pytest.raises(ValidationError):
+@pytest.mark.parametrize(
+    "points, expected_type",
+    [(0, "greater_than_equal"), (-5, "greater_than_equal"), (101, "less_than_equal")],
+)
+def test_points_out_of_range_are_rejected(points, expected_type):
+    with pytest.raises(ValidationError) as excinfo:
         ContestCriterion.model_validate(criterion(max_points=points))
+    # Confirms it failed on max_points specifically, for the expected reason
+    # (too low vs. too high) — not some unrelated field or a different limit.
+    assert ("max_points",) in error_locations(excinfo)
+    assert any(e["type"] == expected_type for e in excinfo.value.errors() if e["loc"] == ("max_points",))
 
 
 @pytest.mark.parametrize("name", ["", "   "])
 def test_empty_name_is_rejected(name):
-    with pytest.raises(ValidationError):
+    with pytest.raises(ValidationError) as excinfo:
         ContestCriterion.model_validate(criterion(name=name))
+    assert ("name",) in error_locations(excinfo)
 
 
 def test_sixteen_criteria_are_rejected():
     criteria = [criterion(f"c{i}") for i in range(MAX_CRITERIA + 1)]
-    with pytest.raises(ValidationError):
+    with pytest.raises(ValidationError) as excinfo:
         ContestRubric.model_validate(rubric(*criteria))
+    assert ("criteria",) in error_locations(excinfo)
+    assert any(e["type"] == "too_long" for e in excinfo.value.errors() if e["loc"] == ("criteria",))
 
 
 def test_zero_criteria_are_rejected():
-    with pytest.raises(ValidationError):
+    with pytest.raises(ValidationError) as excinfo:
         ContestRubric.model_validate({"contest_name": "x", "criteria": []})
+    assert ("criteria",) in error_locations(excinfo)
+    assert any(e["type"] == "too_short" for e in excinfo.value.errors() if e["loc"] == ("criteria",))
 
 
 @pytest.mark.parametrize("count", [0, 1, JEV_LEVEL_COUNT - 1, JEV_LEVEL_COUNT + 1])
 def test_level_count_other_than_five_is_rejected(count):
     with pytest.raises(ValidationError) as excinfo:
         JevScoreQuestion.model_validate(question(levels=[f"段階{i}" for i in range(count)]))
-    if count:
-        assert "ちょうど5個" in error_text(excinfo)
+    # Model-level check (no single field is "wrong"), so confirm via the
+    # message that it is this rule (and reports the actual count) that failed.
+    assert "ちょうど5個" in error_text(excinfo)
+    assert f"{count}個です" in error_text(excinfo)
 
 
 def test_blank_level_is_rejected():
-    with pytest.raises(ValidationError):
+    with pytest.raises(ValidationError) as excinfo:
         JevScoreQuestion.model_validate(question(levels=LEVELS[:4] + ["  "]))
+    # The 5th (index 4) level specifically, not some other item in the list.
+    assert ("levels", 4) in error_locations(excinfo)
 
 
 def test_duplicate_criterion_ids_are_rejected():
@@ -106,8 +128,9 @@ def test_duplicate_criterion_ids_are_rejected():
 
 @pytest.mark.parametrize("cid", ["", "課題", "has space", "x" * 41])
 def test_invalid_criterion_id_is_rejected(cid):
-    with pytest.raises(ValidationError):
+    with pytest.raises(ValidationError) as excinfo:
         ContestCriterion.model_validate(criterion(cid=cid))
+    assert ("id",) in error_locations(excinfo)
 
 
 # --- QuestionSet: exactly one question per criterion ---------------------------
@@ -168,15 +191,39 @@ def test_valid_score_result():
 
 
 @pytest.mark.parametrize(
-    "overrides",
+    "overrides, expected_loc",
     [
-        {"points": 20.5},  # above max_points
-        {"points": -1},
-        {"jev_score": JEV_LEVEL_COUNT},  # Jev scores are 0..4
-        {"jev_score": -0.1},
-        {"confidence": 1.1},
+        ({"points": 20.5}, ()),  # above max_points: model-level _points_within_max, no single field
+        ({"points": -1}, ("points",)),
+        ({"jev_score": JEV_LEVEL_COUNT}, ("jev_score",)),  # Jev scores are 0..4
+        ({"jev_score": -0.1}, ("jev_score",)),
+        ({"confidence": 1.1}, ("confidence",)),
     ],
 )
-def test_out_of_range_result_is_rejected(overrides):
-    with pytest.raises(ValidationError):
+def test_out_of_range_result_is_rejected(overrides, expected_loc):
+    with pytest.raises(ValidationError) as excinfo:
         ContestCriterionResult.model_validate(result(**overrides))
+    assert expected_loc in error_locations(excinfo)
+
+
+@pytest.mark.parametrize("name", ["", "   "])
+def test_result_with_blank_criterion_name_is_rejected(name):
+    with pytest.raises(ValidationError) as excinfo:
+        ContestCriterionResult.model_validate(result(name=name))
+    assert ("name",) in error_locations(excinfo)
+
+
+@pytest.mark.parametrize("contest_name", ["", "   "])
+def test_score_result_with_blank_contest_name_is_rejected(contest_name):
+    with pytest.raises(ValidationError) as excinfo:
+        ContestScoreResult.model_validate(
+            {
+                "contest_name": contest_name,
+                "results": [result()],
+                "total_points": 15.0,
+                "max_total_points": 20,
+                "transcript": "書き起こし",
+                "generated_at": datetime.now(timezone.utc),
+            }
+        )
+    assert ("contest_name",) in error_locations(excinfo)

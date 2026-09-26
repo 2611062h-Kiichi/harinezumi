@@ -8,8 +8,8 @@
 ## 引き継ぎメモ（常に最新の状態に書き換える欄）
 - **最終更新**: 2026-09-26
 - **今の作業ブランチ**: `feature/contest-jev-questions`（土台: origin/feature/business-contest-rubric の b2dfe7f。upstream は未設定＝まだ push していない）
-- **最後に終わったこと**: T10 合格（`evals/evidence/T10/review.md`）
-- **次にやること**: T11（人間承認の実API通し確認）
+- **最後に終わったこと**: T13 実装完了 → 評価役の検品待ち（status: review）
+- **次にやること**: T13 の検品 → 合格なら T14（採用済みのP4・P5の反映）。T11（人間承認の実API通し確認）はサンプル音声待ちで保留中
 - **人間待ち**: なし（人間が T14 を確認して基準タグを更新済み: `harness-baseline` = f901d4b）
 - **後続タスクへの申し送り**（T03 評価役の指摘より。該当タスクの作業計画に入れること）:
   - T05: Jev に渡す `Score` の `instructions` が観点名（または観点の内容）になっていることをテストで確かめる（採用された P2(b)）
@@ -28,6 +28,15 @@
 ---
 
 ## 作業計画（計画役が書く・タスクごとに上書き）
+### T13 採用された提案 P2(a)・P3 の反映（AC-00a, AC-00c, AC-00d, AC-03, AC-05）
+- ユーザーの指示: サンプル音声の準備待ちの間に、T11（実API通し確認・要承認）を後回しにして、依存関係が満たされている T13 を先に進める（T14 は依頼にはあるが T13 を先に着手）
+1. PDF のスライド抽出テスト（P2(a)）: `backend/requirements-dev.txt` に `reportlab` を追加（PDF書き出し用。テスト専用の道具なので docs/safety.md の「テスト用のpytestなど」の例外に該当し、承認なしで進める）。`test_slide_extractor.py` に、reportlab で作った2ページのPDFから `extract_from_pdf` がページ番号・本文を正しく取り出すテストと、文字の無いページが空文字になるテストを追加
+2. AC-05 のテスト強化（P3(a)）: `test_contest_models.py` の「エラーになること」だけを見ているテストに、`ValidationError.errors()` の `loc`（どの項目か）や具体的な文言を確認する assert を足す（配点の範囲外・名前が空・観点16個/0個・段階が空・IDが不正・結果の範囲外の各テスト）
+3. 採点結果の空文字禁止（P3(b)）: `app/models/contest.py` の `ContestCriterionResult.name` と `ContestScoreResult.contest_name` を `str` から `RequiredText`（既存の `ContestCriterion.name` と同じ制約）に変更。テストを追加
+4. 証拠: `evals/evidence/T13/` に pytest.log、secret-scan.log、check_tasks.log
+- 変更予定ファイル: `requirements-dev.txt`（追記）、`test_slide_extractor.py`（追記）、`app/models/contest.py`（型の変更2箇所）、`test_contest_models.py`（既存テストの強化＋追加）
+- 承認が必要な操作: なし（reportlab はテスト専用。実 API は呼ばない）
+
 ### T10 画面: 音声アップロードと結果表示、保存済みQuestionsの選択（AC-00a, AC-00b, AC-00c, AC-00d, AC-12）
 1. `frontend/src/api/contestApi.ts` に追記: `listQuestionSets()`（GET一覧）、`loadQuestionSet(id)`（GET読み込み）、`scoreAudio(questionSet, mediaFile)`（POST /api/contest/score、multipart。`media_file` と `question_set`＝JSON文字列）
 2. `frontend/src/components/LoadingState.tsx` に任意の `stages` プロパティを追加（既定値は今のピッチ審査用の文言のままなので既存の動きは変わらない）。T09 で「Questionを生成中」の場面にピッチ審査用の文言（「スライドを解析中…」）が出ていた小さな不正確さも、ここで直す
@@ -212,6 +221,13 @@
 - スクリーンショット（AC-12 の証拠）: T09 と同じやり方で、今回は `question_builder.generate_questions` に加えて `contest_scorer.score_audio` も固定の点数（うち1つは確信度0.35で low_confidence）を返す関数に一時的に差し替えて撮影（コミットしない）。音声アップロード画面・採点結果画面（合計点・観点別点数・確信度の注意）・保存済み一覧画面の3枚。撮影中に保存した Question セットのファイル（`backend/data/question_sets/`。gitignore 済み）は撮影後に削除した。console エラーは0件
 - 証拠: `evals/evidence/T10/`（build.log、pytest.log: 132 passed（既存機能への影響なし）、screenshot-01/02/03、secret-scan.log、check_tasks.log）
 - 評価役の検品で **合格**（AC-00a/00b/00c/00d/12 すべて○）。評価役は確信度が低い観点にだけ注意書きが出て、そうでない観点には出ていないことをスクショとコードの両方で確認。画面側が合計・観点別点数を独自に計算し直さず API の値をそのまま表示していること、保存済み選択→編集→採点の流れがコード上つながっていることも確認。合否に影響しない指摘はなし
+
+### 2026-09-27 T13 採用された提案 P2(a)・P3 の反映
+- 人間の指示: サンプル音声待ちの間、T11（要承認）より先に依存関係の満たされた T13 を進める
+- P2(a): `backend/requirements-dev.txt` に `reportlab`（テスト専用。PDF書き出しはpdfplumberにはできないため）を追加。`test_slide_extractor.py` に PDF（2ページ・英語テキスト。base14フォントは日本語非対応なので英語にした。日本語の抽出はPPTXのテストで確認済み）からの抽出テストと、文字の無いページが空文字になるテストを追加
+- P3(a): `test_contest_models.py` の「ValidationErrorになること」だけを見ていたテストに、`errors()` の `loc`（どの項目のエラーか）や具体的な文言の assert を追加。段階数0個のテストで「ちょうど5個」の文言確認を全ケースに広げた（元は0個のときだけ確認を飛ばしていたが、実際は0個でも同じ文言が出ることを確認したので統一した）
+- P3(b): `ContestCriterionResult.name` と `ContestScoreResult.contest_name` を `str` から `RequiredText`（`ContestCriterion.name` と同じ制約）に変更し、空文字・空白のみを拒否するテストを追加
+- 証拠: `evals/evidence/T13/`（pytest.log: 138 passed（既存132＋新規6）、secret-scan.log、check_tasks.log）
 
 ---
 

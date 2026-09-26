@@ -1,2 +1,3 @@
 -r requirements.txt
 pytest
+reportlab  # test-only: generates a real PDF for test_slide_extractor.py (pdfplumber only reads PDFs)

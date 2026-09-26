@@ -88,7 +88,7 @@ class QuestionSet(BaseModel):
 
 class ContestCriterionResult(BaseModel):
     criterion_id: CriterionId
-    name: str
+    name: Annotated[RequiredText, StringConstraints(max_length=100)]
     max_points: int = Field(ge=1, le=100)
     jev_score: float = Field(ge=0, le=JEV_LEVEL_COUNT - 1)
     points: float = Field(ge=0)
@@ -103,7 +103,7 @@ class ContestCriterionResult(BaseModel):
 
 
 class ContestScoreResult(BaseModel):
-    contest_name: str
+    contest_name: Annotated[RequiredText, StringConstraints(max_length=100)]
     results: list[ContestCriterionResult] = Field(min_length=1, max_length=MAX_CRITERIA)
     total_points: float = Field(ge=0)
     max_total_points: int = Field(ge=1)

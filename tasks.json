@@ -233,9 +233,17 @@
       "id": "T13",
       "task": "採用された提案 P2(a)・P3 を反映する: PDF のスライド抽出テストを追加し、AC-05 のテストで「どの項目のエラーか」まで確かめ、採点結果の name と contest_name の空文字を禁止する",
       "owner": "ai",
-      "status": "todo",
+      "status": "review",
       "passes": false,
-      "evidence": [],
+      "evidence": [
+        "evals/evidence/T13/pytest.log",
+        "evals/evidence/T13/secret-scan.log",
+        "evals/evidence/T13/check_tasks.log",
+        "backend/requirements-dev.txt",
+        "backend/tests/test_slide_extractor.py",
+        "backend/app/models/contest.py",
+        "backend/tests/test_contest_models.py"
+      ],
       "dependencies": ["T03"],
       "acceptance": ["AC-00a", "AC-00c", "AC-00d", "AC-03", "AC-05"]
     },
