@@ -10,7 +10,7 @@
 - **今の作業ブランチ**: `feature/contest-jev-questions`（土台: origin/feature/business-contest-rubric の b2dfe7f。upstream は未設定＝まだ push していない）
 - **最後に終わったこと**: T04 合格（`evals/evidence/T04/review.md`）
 - **次にやること**: T05（文字起こしテキストと Questions で Jev 採点・配点換算）
-- **人間待ち**: T13 を追加したので、確認後に `git tag -f harness-baseline`
+- **人間待ち**: なし（人間が T13 を確認して基準タグを更新済み: `harness-baseline` = 429d207）
 - **後続タスクへの申し送り**（T03 評価役の指摘より。該当タスクの作業計画に入れること）:
   - T05: Jev に渡す `Score` の `instructions` が観点名（または観点の内容）になっていることをテストで確かめる（採用された P2(b)）
   - T05: 型の `levels` を、Jev の `Score(criteria=...)` に名前を変えて渡す。`low_confidence` は必ず `confidence < LOW_CONFIDENCE_THRESHOLD` から計算する（型では確かめていない）
