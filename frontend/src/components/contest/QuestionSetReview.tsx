@@ -7,12 +7,13 @@ import { QuestionEditor } from "./QuestionEditor";
 interface Props {
   questionSet: QuestionSet;
   onQuestionSetChange: (updated: QuestionSet) => void;
+  onProceedToScoring: () => void;
   onReset: () => void;
 }
 
 type SaveStatus = "idle" | "saving" | "saved" | "error";
 
-export function QuestionSetReview({ questionSet, onQuestionSetChange, onReset }: Props) {
+export function QuestionSetReview({ questionSet, onQuestionSetChange, onProceedToScoring, onReset }: Props) {
   const [saveName, setSaveName] = useState(questionSet.rubric.contest_name);
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -85,6 +86,7 @@ export function QuestionSetReview({ questionSet, onQuestionSetChange, onReset }:
         {saveStatus === "error" && saveError && <p className="error-text">{saveError}</p>}
       </form>
 
+      <button onClick={onProceedToScoring}>この内容で音声を採点する</button>
       <button className="secondary-button" onClick={onReset}>
         別のコンテストの観点を入力する
       </button>

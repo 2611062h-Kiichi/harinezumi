@@ -18,10 +18,11 @@ function emptyCriterion(): CriterionInput {
 
 interface Props {
   onSubmit: (rubric: ContestRubric) => void;
+  onUseSaved: () => void;
   errorMessage: string | null;
 }
 
-export function CriteriaForm({ onSubmit, errorMessage }: Props) {
+export function CriteriaForm({ onSubmit, onUseSaved, errorMessage }: Props) {
   const [contestName, setContestName] = useState("");
   const [criteria, setCriteria] = useState<CriterionInput[]>([emptyCriterion()]);
   const [localError, setLocalError] = useState<string | null>(null);
@@ -77,6 +78,10 @@ export function CriteriaForm({ onSubmit, errorMessage }: Props) {
         出場するピッチコンテストの採点観点を入力すると、AIがJev（採点AI）用の質問（Question）を作成します。
         生成後に文言を確認・編集してから、発表の採点に使えます。
       </p>
+
+      <button type="button" className="link-button" onClick={onUseSaved}>
+        保存済みのQuestionsを使う
+      </button>
 
       <label className="field">
         <span>コンテスト名</span>

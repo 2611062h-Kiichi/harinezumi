@@ -8,8 +8,8 @@
 ## 引き継ぎメモ（常に最新の状態に書き換える欄）
 - **最終更新**: 2026-09-26
 - **今の作業ブランチ**: `feature/contest-jev-questions`（土台: origin/feature/business-contest-rubric の b2dfe7f。upstream は未設定＝まだ push していない）
-- **最後に終わったこと**: T09 合格（`evals/evidence/T09/review.md`）
-- **次にやること**: T10（画面: 音声アップロードと結果表示、保存済みQuestionsの選択）
+- **最後に終わったこと**: T10 実装完了 → 評価役の検品待ち（status: review）
+- **次にやること**: T10 の検品 → 合格なら T11（人間承認の実API通し確認）
 - **人間待ち**: なし（人間が T14 を確認して基準タグを更新済み: `harness-baseline` = f901d4b）
 - **後続タスクへの申し送り**（T03 評価役の指摘より。該当タスクの作業計画に入れること）:
   - T05: Jev に渡す `Score` の `instructions` が観点名（または観点の内容）になっていることをテストで確かめる（採用された P2(b)）
@@ -28,6 +28,20 @@
 ---
 
 ## 作業計画（計画役が書く・タスクごとに上書き）
+### T10 画面: 音声アップロードと結果表示、保存済みQuestionsの選択（AC-00a, AC-00b, AC-00c, AC-00d, AC-12）
+1. `frontend/src/api/contestApi.ts` に追記: `listQuestionSets()`（GET一覧）、`loadQuestionSet(id)`（GET読み込み）、`scoreAudio(questionSet, mediaFile)`（POST /api/contest/score、multipart。`media_file` と `question_set`＝JSON文字列）
+2. `frontend/src/components/LoadingState.tsx` に任意の `stages` プロパティを追加（既定値は今のピッチ審査用の文言のままなので既存の動きは変わらない）。T09 で「Questionを生成中」の場面にピッチ審査用の文言（「スライドを解析中…」）が出ていた小さな不正確さも、ここで直す
+3. `frontend/src/components/contest/SavedQuestionSetPicker.tsx`: `listQuestionSets` で一覧を取得し、名前・コンテスト名・観点数・保存日時を表示。選ぶと `onSelect(id)`
+4. `frontend/src/components/contest/AudioScoreForm.tsx`: 音声/動画ファイルを選ぶ（既存の UploadForm と同じ拡張子・上限MB）。送信で `scoreAudio` を呼ぶ
+5. `frontend/src/components/contest/ContestScoreResultView.tsx`: 合計点／満点、観点ごとの点数／配点、`low_confidence` が true の観点には voice.md 1章の文言（「発表の中に判断材料が少ないため、この点数は参考値です。」）を表示。「もう一度採点する」「最初からやり直す」ボタン
+6. `ContestQuestionsPage.tsx` を拡張し、次の2つの入口をどちらも `QuestionSetReview` の「音声で採点する」ボタンに合流させる（1本の採点フローにする）
+   - 新規生成: 入力フォーム → 生成 → 確認・編集（既存の T09 フロー）
+   - 保存済みの再利用: `CriteriaForm` に「保存済みのQuestionsを使う」リンクを追加 → `SavedQuestionSetPicker` → 選択 → 読み込み → 確認・編集画面に表示（そのまま採点しても、直してから採点してもよい）
+7. 証拠のスクリーンショット: T09 と同じやり方（question_builder のスタブに加えて、`contest_scorer.score_audio` を Whisper/Jev を呼ばずに固定の点数を返す関数に一時的に差し替える。コミットしない）で、音声アップロード画面と結果画面を撮影
+8. 証拠: `evals/evidence/T10/` に build.log、pytest.log（既存機能への影響なし）、screenshot-*.png、secret-scan.log、check_tasks.log
+- 変更予定ファイル: `api/contestApi.ts`（追記）、`LoadingState.tsx`（後方互換の拡張）、新規 `components/contest/SavedQuestionSetPicker.tsx`・`AudioScoreForm.tsx`・`ContestScoreResultView.tsx`、`ContestQuestionsPage.tsx`・`CriteriaForm.tsx`・`QuestionSetReview.tsx`（つなぎ込み）、`index.css`（追記）
+- 承認が必要な操作: なし。実 API は呼ばない（スクリーンショット用の一時差し替えはコミットしない）
+
 ### T09 画面: コンテスト観点の入力フォームとQuestion確認・編集（AC-00a, AC-00b, AC-00c, AC-00d, AC-11）
 1. `frontend/src/types/contest.ts` に `SavedQuestionSet`・`SavedQuestionSetSummary` を追加（T08 でバックエンドに追加した形をミラー）
 2. `frontend/src/api/contestApi.ts` を新規作成: `ContestApiError`、`generateQuestions(rubric)`（POST /api/contest/questions）、`saveQuestionSet(name, questionSet)`（POST /api/contest/question-sets）。既存の `reviewApi.ts` と同じ作り（`detail` を日本語エラーとしてそのまま投げる）
@@ -189,6 +203,14 @@
 - スクリーンショット（AC-11 の証拠）: 実際に Claude API を呼ぶと料金と承認が必要なため、scratchpad の一時スクリプトで `question_builder.generate_questions` を固定の QuestionSet を返す関数に差し替えて起動した（コミットしない）。Playwright（scratchpad に一時インストール。chromium-cli が環境に無かったため `run` スキルの代替手順に従った）でブラウザを操作し、入力フォーム→生成結果→編集後の3枚を撮影。console エラーは0件。撮影後はサーバーを停止し、`git status` でリポジトリに一時ファイルが残っていないことを確認した
 - 証拠: `evals/evidence/T09/`（build.log、pytest.log: 132 passed（既存機能への影響なし）、screenshot-01/02/03、secret-scan.log、check_tasks.log）
 - 評価役の検品で **合格**（AC-00a/00b/00c/00d/11 すべて○）。評価役は3枚のスクショを実際に画像として開き、同じコンテスト名・観点が3枚を通して一貫していることと、コードの文言・クラス名との一致から本物の画面と判断した。id の自動採番がバックエンドの正規表現を満たすこと、既存のピッチ審査フローがロジック変更なしで移されていることもコードで確認。合否に影響しない指摘はなし
+
+### 2026-09-26 T10 画面: 音声アップロードと結果表示、保存済みQuestionsの選択
+- 追加: `contestApi.ts` に `listQuestionSets`・`loadQuestionSet`・`scoreAudio`（multipart）を追記、`components/contest/`（SavedQuestionSetPicker・AudioScoreForm・ContestScoreResultView）、`ContestQuestionsPage.tsx` の状態遷移を拡張
+- 新規生成のフローと保存済み再利用のフローを、`QuestionSetReview`（確認・編集画面）の「この内容で音声を採点する」ボタンに合流させた。保存済みを選んでも編集画面に入るので、そのまま採点しても直してから採点してもよい
+- `low_confidence` の観点には voice.md 1章の文言そのまま「発表の中に判断材料が少ないため、この点数は参考値です。」を表示
+- 小さな改善: `LoadingState.tsx` に任意の `stages` プロパティを追加（既定値は今までどおりなので既存の動きは変わらない）。T09 で「Questionを生成中」の場面にピッチ審査用の文言（「スライドを解析中…」）が出ていた不正確さも、ここで直した
+- スクリーンショット（AC-12 の証拠）: T09 と同じやり方で、今回は `question_builder.generate_questions` に加えて `contest_scorer.score_audio` も固定の点数（うち1つは確信度0.35で low_confidence）を返す関数に一時的に差し替えて撮影（コミットしない）。音声アップロード画面・採点結果画面（合計点・観点別点数・確信度の注意）・保存済み一覧画面の3枚。撮影中に保存した Question セットのファイル（`backend/data/question_sets/`。gitignore 済み）は撮影後に削除した。console エラーは0件
+- 証拠: `evals/evidence/T10/`（build.log、pytest.log: 132 passed（既存機能への影響なし）、screenshot-01/02/03、secret-scan.log、check_tasks.log）
 
 ---
 
