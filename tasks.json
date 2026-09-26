@@ -137,6 +137,7 @@
         "evals/evidence/T07/pytest.log",
         "evals/evidence/T07/secret-scan.log",
         "evals/evidence/T07/check_tasks.log",
+        "evals/evidence/T07/review-1.md",
         "backend/app/routers/contest.py",
         "backend/app/utils/validation_messages.py",
         "backend/tests/test_contest_api.py"

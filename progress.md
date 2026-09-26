@@ -8,7 +8,7 @@
 ## 引き継ぎメモ（常に最新の状態に書き換える欄）
 - **最終更新**: 2026-09-26
 - **今の作業ブランチ**: `feature/contest-jev-questions`（土台: origin/feature/business-contest-rubric の b2dfe7f。upstream は未設定＝まだ push していない）
-- **最後に終わったこと**: T07 実装完了 → 評価役の検品待ち（status: review）
+- **最後に終わったこと**: T07 を1回目の不合格を受けて修正 → 評価役の再検品待ち（status: review）
 - **次にやること**: T07 の検品 → 合格なら T08（Questions セットの保存・一覧・読み込み）
 - **人間待ち**: なし（人間が T14 を確認して基準タグを更新済み: `harness-baseline` = f901d4b）
 - **後続タスクへの申し送り**（T03 評価役の指摘より。該当タスクの作業計画に入れること）:
@@ -145,6 +145,15 @@
   - 一時フォルダは成功でもエラー（キー未設定・空の書き起こし）でも消える。テストあり
 - 入力ミスは FastAPI 標準の 422（英語）ではなく、400 と日本語のエラーで返す。ファイルや Question が無いときも 400
 - 証拠: `evals/evidence/T07/`（pytest.log: 104 passed、secret-scan.log、check_tasks.log）
+- **評価役の判定: 不合格（AC-09 ×）**。記録: `evals/evidence/T07/review-1.md`。400 と日本語のエラーにならない経路が5つあった:
+  1. /questions で配点に5000桁の整数 → 500（`json.loads` の `ValueError` を捕まえていない）
+  2. /questions で20万段の入れ子の JSON → 500（`RecursionError`）
+  3. /score の question_set で 2 と同じ → 500
+  4. /score で media_file をファイルでなく文字列で送る → FastAPI 標準の 422（英語）
+  5. /score で question_set をファイルのパートで送る（ブラウザで FormData に Blob を渡すと起きる）→ 422（英語。Starlette の内部オブジェクトの中身も入る）
+- 修正方針: `parse_json` で `ValueError`・`RecursionError` も捕まえる／/score は `request.form()` から自分で取り出して検査する（文字列でもファイルのパートでも question_set を受け付ける。media_file が文字列・複数なら 400）／5つの経路と「早く止まる経路では一時フォルダを作らない」をテストに入れる
+- 修正: 先に5つの経路のテストを書いて失敗を確かめてから直した（6件失敗 → 修正後すべて成功）。直している途中で、同じ種類の抜けをもう1つ自分で見つけた: 形の崩れた multipart を送ると 400 だが Starlette の英語の文（"Invalid multipart data."）が返る → 日本語に直してテストを追加
+- 修正後: pytest 114 passed（`evals/evidence/T07/pytest.log` を作り直した）
 
 ---
 
@@ -161,6 +170,8 @@
 - T02: 「テストが全部通った」だけでは安全装置が効いている証明にならない。わざと失敗するはずの状況（モック無しの呼び出し）を作って、本当に止まるか確かめる。今回それで遮断の抜け穴が見つかった
 - T02（評価役の指摘）: 秘密情報チェックは、必ず `git add` した後に safety.md どおり `git diff --cached` で行う（`git diff` だけだと新規ファイルが漏れる）
 - T03: テストの補助関数で `x or 既定値` と書くと、空のリストや 0 が既定値にすり替わる。「指定なし」は `is None` で判定する
+- T07（評価役の指摘・不合格）: 「入力ミスは 400 と日本語」を作るときは、普通の入力ミスだけでなく、異常な入力（巨大な数、深い入れ子、ファイルの代わりに文字列、ブラウザ特有の送り方、壊れた multipart）も試す。FastAPI や Starlette が自動で返す英語のエラーの経路を1つずつ潰す
+- T07: ヒアドキュメントの中の Python で `\r\n` を書くと、本物の改行になってファイルが壊れることがある。エスケープを含む行は Edit ツールで直接書く
 - T05（評価役の指摘・P1 違反）: 証拠の1行目のコマンドから `PYTHONIOENCODING=utf-8` が抜けていた。証拠の1行目は、実行するコマンドと同じ文字列の変数から書き出す（手で書き写さない）
 - T05: Python の `round()` は四捨五入ではない（ちょうど半分は偶数側へ: 0.25 → 0.2）。四捨五入が要件なら `Decimal` の `ROUND_HALF_UP` を使い、「ちょうど半分」のテストを入れる
 - T02: Windows の非同期通信は `socket.connect` を通らない。通信を止めるときは名前解決（getaddrinfo）と asyncio の接続も止める

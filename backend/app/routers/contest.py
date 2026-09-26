@@ -1,15 +1,18 @@
 """API for contest mode: criteria -> Jev questions, and audio + questions -> scores.
 
-Input is validated here (not by FastAPI's automatic body parsing) so that
-mistakes come back as 400 with Japanese messages instead of English 422s.
+Input is validated here (not by FastAPI's automatic body/form parsing) so
+that mistakes come back as 400 with Japanese messages instead of English 422s
+or 500s.
 """
 
 import json
 import shutil
 import tempfile
 
-from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, ValidationError
+from starlette.datastructures import UploadFile
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.config import get_settings
 from app.models.contest import ContestRubric, ContestScoreResult, QuestionSet
@@ -20,11 +23,15 @@ from app.utils.validation_messages import to_japanese
 
 router = APIRouter(prefix="/api/contest")
 
+MAX_QUESTION_SET_BYTES = 1024 * 1024
+
 
 def parse_json(raw: str | bytes, model: type[BaseModel], what: str):
     try:
         data = json.loads(raw)
-    except (json.JSONDecodeError, UnicodeDecodeError) as e:
+    # ValueError covers malformed JSON, bad UTF-8 and integers over Python's
+    # digit limit; RecursionError covers absurdly deep nesting.
+    except (ValueError, RecursionError) as e:
         raise HTTPException(status_code=400, detail=f"{what}をJSONとして読み取れませんでした。") from e
     try:
         return model.model_validate(data)
@@ -39,16 +46,32 @@ async def create_questions(request: Request):
 
 
 @router.post("/score", response_model=ContestScoreResult)
-async def score_pitch(
-    media_file: UploadFile | None = File(None),
-    question_set: str | None = Form(None),
-):
-    if media_file is None:
+async def score_pitch(request: Request):
+    try:
+        form = await request.form()
+    except StarletteHTTPException as e:
+        # Starlette answers broken multipart bodies with an English 400.
+        raise HTTPException(
+            status_code=400, detail="送信データの形が正しくありません。画面からもう一度送信してください。"
+        ) from e
+
+    media_files = form.getlist("media_file")
+    if len(media_files) > 1:
+        raise HTTPException(status_code=400, detail="音声または動画ファイルは1つだけ指定してください。")
+    media_file = media_files[0] if media_files else None
+    if not isinstance(media_file, UploadFile):
         raise HTTPException(status_code=400, detail="発表の音声または動画ファイルを指定してください。")
-    if not question_set:
+
+    raw_question_set = form.get("question_set")
+    if isinstance(raw_question_set, UploadFile):
+        # Browsers send a file part when a Blob is appended to FormData.
+        raw_question_set = await raw_question_set.read(MAX_QUESTION_SET_BYTES + 1)
+        if len(raw_question_set) > MAX_QUESTION_SET_BYTES:
+            raise HTTPException(status_code=400, detail="Questionのデータが大きすぎます。")
+    if not raw_question_set:
         raise HTTPException(status_code=400, detail="採点に使うQuestionを指定してください。")
 
-    questions = parse_json(question_set, QuestionSet, "Question")
+    questions = parse_json(raw_question_set, QuestionSet, "Question")
     validate_upload(media_file, MEDIA_EXTS, get_settings().max_media_mb)
 
     tmp_dir = tempfile.mkdtemp()

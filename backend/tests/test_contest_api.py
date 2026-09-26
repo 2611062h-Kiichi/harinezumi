@@ -225,3 +225,84 @@ def test_temp_dir_is_removed_when_transcript_is_empty(fakes, temp_dirs):
 
     assert response.status_code == 400
     assert len(temp_dirs) == 1 and not os.path.exists(temp_dirs[0])
+
+
+# --- paths found by the first review (evals/evidence/T07/review-1.md) --------------
+
+DEEP_JSON = b"[" * 200_000 + b"]" * 200_000
+
+
+def test_huge_integer_points_is_400(fakes):
+    body = b'{"contest_name":"x","criteria":[{"id":"a","name":"A","max_points":' + b"9" * 5000 + b"}]}"
+
+    response = client.post("/api/contest/questions", content=body, headers={"Content-Type": "application/json"})
+
+    assert response.status_code == 400
+    assert "採点観点" in response.json()["detail"]
+
+
+def test_deeply_nested_rubric_json_is_400(fakes):
+    response = client.post("/api/contest/questions", content=DEEP_JSON, headers={"Content-Type": "application/json"})
+
+    assert response.status_code == 400
+
+
+def test_deeply_nested_question_set_is_400(fakes, temp_dirs):
+    response = post_score(question_set=DEEP_JSON.decode())
+
+    assert response.status_code == 400
+    assert temp_dirs == []
+
+
+def test_media_file_sent_as_text_is_400_in_japanese(fakes):
+    response = client.post(
+        "/api/contest/score", data={"media_file": "not-a-file", "question_set": QUESTION_SET.model_dump_json()}
+    )
+
+    assert response.status_code == 400
+    assert "音声または動画ファイルを指定してください" in response.json()["detail"]
+
+
+def test_question_set_sent_as_file_part_is_accepted(fakes):
+    # Browsers send this shape when a Blob is appended to FormData.
+    files = [
+        ("media_file", ("pitch.mp3", b"fake-audio-bytes", "audio/mpeg")),
+        ("question_set", ("question_set.json", QUESTION_SET.model_dump_json().encode(), "application/json")),
+    ]
+
+    response = client.post("/api/contest/score", files=files)
+
+    assert response.status_code == 200
+    assert response.json()["total_points"] == 30.0
+
+
+def test_two_media_files_are_400(fakes, temp_dirs):
+    files = [
+        ("media_file", ("a.mp3", b"a", "audio/mpeg")),
+        ("media_file", ("b.mp3", b"b", "audio/mpeg")),
+    ]
+
+    response = client.post("/api/contest/score", data={"question_set": QUESTION_SET.model_dump_json()}, files=files)
+
+    assert response.status_code == 400
+    assert "1つだけ" in response.json()["detail"]
+    assert temp_dirs == []
+
+
+@pytest.mark.parametrize("filename, question_set", [("pitch.txt", None), ("pitch.mp3", "{not json")])
+def test_no_temp_dir_is_created_when_input_is_rejected(fakes, temp_dirs, filename, question_set):
+    response = post_score(filename=filename, question_set=question_set)
+
+    assert response.status_code == 400
+    assert temp_dirs == []
+
+
+@pytest.mark.parametrize(
+    "content_type, body",
+    [("multipart/form-data; boundary=xyz", b"garbage without boundary"), ("multipart/form-data", b"--x\r\n")],
+)
+def test_broken_multipart_body_is_400_in_japanese(fakes, content_type, body):
+    response = client.post("/api/contest/score", content=body, headers={"Content-Type": content_type})
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "送信データの形が正しくありません。画面からもう一度送信してください。"
