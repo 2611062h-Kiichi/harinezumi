@@ -8,9 +8,9 @@
 ## 引き継ぎメモ（常に最新の状態に書き換える欄）
 - **最終更新**: 2026-09-26
 - **今の作業ブランチ**: `feature/contest-jev-questions`（土台: origin/feature/business-contest-rubric の b2dfe7f。upstream は未設定＝まだ push していない）
-- **最後に終わったこと**: T00 合格。T01 は回答を記録したが、1回目の検品で不合格 → 修正済み
-- **次にやること**: 人間が基準タグを付け直す → T01 を評価役が再検品 → T02（AI・pytest 導入）
-- **止まっていること / 人間待ち**: `git tag -f harness-baseline`（TypeSafe の確定と P1 を反映した requirements.md / roles.md を基準にする）
+- **最後に終わったこと**: T01 合格（2回目の検品。`evals/evidence/T01/review.md`）
+- **次にやること**: T02（AI・pytest 導入と既存機能の回帰テスト）
+- **止まっていること / 人間待ち**: なし（基準タグ `harness-baseline` = 86bd2d7）
 - **注意**:
   - 依存関係は作業ブランチの内容で入れ直し済み（typesafe-sdk 0.7.1 の import、`npm run build` の成功を確認）
   - `npm install` を実行すると、npm のバージョン差で `frontend/package-lock.json` の `libc` 行が消える。機能には関係ないので `git checkout -- frontend/package-lock.json` で戻す
@@ -51,7 +51,7 @@ _（まだなし）_
 - **評価役の判定: 不合格（AC-02 ×）**。理由: 3章の見出しに `[確定・Q2]` を付けたため、Q2 で聞いていない「TypeSafe = TypeSafe AI 社」の項目まで確定に見えた（AIの推測を確定扱い）
 - 修正: 確定の印を「Questions」の項目だけに付け、「TypeSafe」の項目は `[仮定・人間に未確認]` に戻した。証拠を作り直した（実行コマンドを記録、secret-scan.log を追加）
 - 人間の追加回答（原文）: TypeSafe の解釈について「あっています」、提案 P1 について「採用してください」→ requirements.md 3章を確定に、roles.md 2章に P1 を反映
-- 次: 人間が基準タグを付け直す → 評価役が再検品
+- 人間が基準タグを付け直し（86bd2d7）→ 評価役の再検品で **合格**（AC-02/AC-00c/AC-00d すべて○）。証拠: `evals/evidence/T01/review.md`
 
 ---
 
