@@ -18,6 +18,7 @@ SLIDE_EXTS = {".pdf", ".pptx"}
 # Whisper accepts these directly (including video containers with an audio
 # track), so no local ffmpeg extraction step is needed.
 MEDIA_EXTS = {".mp3", ".mp4", ".mpeg", ".mpga", ".m4a", ".wav", ".webm"}
+MAX_EVENT_CONTEXT_LENGTH = 300
 
 
 @router.get("/health")
@@ -56,11 +57,17 @@ async def create_review(
     media_url: str | None = Form(None),
     mode: str = Form(DEFAULT_MODE),
     tone: str = Form(DEFAULT_TONE),
+    event_context: str | None = Form(None),
 ):
     if mode not in RUBRIC_MODES:
         raise HTTPException(status_code=400, detail=f"不明な審査モードです: {mode}")
     if tone not in TONE_LABELS:
         raise HTTPException(status_code=400, detail=f"不明なフィードバックトーンです: {tone}")
+    if event_context and len(event_context) > MAX_EVENT_CONTEXT_LENGTH:
+        raise HTTPException(
+            status_code=400,
+            detail=f"イベント内容は{MAX_EVENT_CONTEXT_LENGTH}文字以内で入力してください。",
+        )
     if media_file is not None and media_url:
         raise HTTPException(status_code=400, detail="音声/動画はファイルとURLのどちらか一方のみ指定してください。")
     if slide_file is None and media_file is None and not media_url:
@@ -89,7 +96,7 @@ async def create_review(
             transcription = await transcribe(media_path, media_filename)
             transcript = transcription.text
 
-        review = await review_generator.generate_review(slides, transcript, mode, tone)
+        review = await review_generator.generate_review(slides, transcript, mode, tone, event_context)
         try:
             history.save_review(review)
         except OSError:

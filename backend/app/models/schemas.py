@@ -81,3 +81,15 @@ class PitchReviewLLMOutputFallback(BaseModel):
     strengths: list[str]
     improvements: list[ImprovementSuggestion]
     one_line_verdict: str
+
+
+class GeneratedCriterion(BaseModel):
+    name: str
+    levels: list[str] = Field(min_length=5, max_length=5)
+
+
+class CustomRubricLLMOutput(BaseModel):
+    """Schema requested from Claude to design a rubric tailored to a
+    user-described event, used for the general mode's optional event_context."""
+
+    criteria: list[GeneratedCriterion] = Field(min_length=5, max_length=9)

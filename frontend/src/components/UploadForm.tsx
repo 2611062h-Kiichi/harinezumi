@@ -11,6 +11,8 @@ const RUBRIC_MODE_OPTIONS: { id: RubricMode; label: string }[] = [
   { id: "general", label: "汎用ピッチ審査" },
 ];
 
+const MAX_EVENT_CONTEXT_LENGTH = 300;
+
 type MediaInputType = "file" | "url";
 
 interface Props {
@@ -19,6 +21,7 @@ interface Props {
     mediaFile: File | null,
     mediaUrl: string | null,
     mode: RubricMode,
+    eventContext: string | null,
   ) => void;
 }
 
@@ -28,6 +31,7 @@ export function UploadForm({ onSubmit }: Props) {
   const [mediaFile, setMediaFile] = useState<File | null>(null);
   const [mediaUrl, setMediaUrl] = useState("");
   const [mode, setMode] = useState<RubricMode>("business");
+  const [eventContext, setEventContext] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   function handleSlideChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -77,6 +81,7 @@ export function UploadForm({ onSubmit }: Props) {
       mediaInputType === "file" ? mediaFile : null,
       mediaInputType === "url" && mediaUrl ? mediaUrl : null,
       mode,
+      mode === "general" && eventContext.trim() ? eventContext.trim() : null,
     );
   }
 
@@ -99,6 +104,22 @@ export function UploadForm({ onSubmit }: Props) {
           ))}
         </select>
       </label>
+
+      {mode === "general" && (
+        <label className="field">
+          <span>イベント内容（任意）</span>
+          <textarea
+            rows={2}
+            maxLength={MAX_EVENT_CONTEXT_LENGTH}
+            placeholder="例: 学生団体主催のアプリ開発ハッカソン、社会人向け新規事業ピッチコンテストなど"
+            value={eventContext}
+            onChange={(e) => setEventContext(e.target.value)}
+          />
+          <p className="note">
+            イベントの内容を入力すると、その内容に合わせてAIが専用の審査基準を作成します。空欄の場合は汎用の審査基準を使用します。
+          </p>
+        </label>
+      )}
 
       <label className="field">
         <span>スライド資料（PDF / PPTX、任意）</span>

@@ -15,12 +15,16 @@ export async function submitPitchReview(
   mediaFile: File | null | undefined,
   mediaUrl: string | null | undefined,
   mode: RubricMode,
+  eventContext?: string | null,
 ): Promise<PitchReviewResponse> {
   const formData = new FormData();
   if (slideFile) {
     formData.append("slide_file", slideFile);
   }
   formData.append("mode", mode);
+  if (eventContext) {
+    formData.append("event_context", eventContext);
+  }
   if (mediaFile) {
     formData.append("media_file", mediaFile);
   } else if (mediaUrl) {

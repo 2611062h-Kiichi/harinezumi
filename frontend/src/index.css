@@ -86,7 +86,8 @@ h1 {
 }
 
 .field input,
-.field select {
+.field select,
+.field textarea {
   width: 100%;
   padding: 10px 12px;
   font-size: 1rem;
@@ -98,12 +99,18 @@ h1 {
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
-.field input::placeholder {
+.field textarea {
+  resize: vertical;
+}
+
+.field input::placeholder,
+.field textarea::placeholder {
   color: var(--text-muted);
 }
 
 .field input:focus,
-.field select:focus {
+.field select:focus,
+.field textarea:focus {
   outline: none;
   border-color: var(--accent-2);
   box-shadow: 0 0 0 3px rgba(167, 139, 250, 0.25);
