@@ -55,10 +55,16 @@ h1 {
 }
 
 .field input,
-.field select {
+.field select,
+.field textarea {
   width: 100%;
   padding: 6px 8px;
   font-size: 1rem;
+  font-family: inherit;
+}
+
+.field textarea {
+  resize: vertical;
 }
 
 .media-input-toggle {
@@ -231,4 +237,137 @@ button:disabled {
 
 .reset-button {
   margin-top: 32px;
+}
+
+.app-mode-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.app-mode-tab {
+  background: var(--card-bg);
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  margin-top: 0;
+}
+
+.app-mode-tab.active {
+  background: var(--accent);
+  color: white;
+  border-color: var(--accent);
+}
+
+.secondary-button {
+  background: var(--card-bg);
+  color: var(--accent);
+  border: 1px solid var(--accent);
+}
+
+.link-button {
+  background: none;
+  color: var(--accent);
+  border: none;
+  padding: 0;
+  margin: 0;
+  font-size: 0.9rem;
+  text-decoration: underline;
+}
+
+.criterion-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin: 16px 0;
+}
+
+.criterion-input-card {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px;
+  background: var(--bg);
+}
+
+.criterion-input-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.question-set-review {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 24px;
+}
+
+.question-editor-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin: 20px 0;
+}
+
+.question-editor-card {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px;
+  background: var(--bg);
+}
+
+.question-editor-header {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 4px;
+}
+
+.question-editor-index {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.question-editor-name {
+  font-weight: 700;
+  flex: 1;
+}
+
+.question-editor-points {
+  color: var(--accent);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.question-editor-original {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  background: var(--accent-light);
+  border-radius: 8px;
+  padding: 8px 12px;
+  margin: 8px 0;
+}
+
+.level-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.level-field span {
+  font-weight: normal;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.save-question-set-form {
+  border-top: 1px solid var(--border);
+  padding-top: 20px;
+  margin-top: 8px;
+}
+
+.save-success {
+  color: var(--accent);
 }

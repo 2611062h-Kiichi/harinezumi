@@ -170,9 +170,19 @@
       "id": "T09",
       "task": "画面: コンテスト観点の入力フォームと、生成された Questions の確認・編集画面を作る",
       "owner": "ai",
-      "status": "todo",
+      "status": "review",
       "passes": false,
-      "evidence": [],
+      "evidence": [
+        "evals/evidence/T09/screenshot-01-form.png",
+        "evals/evidence/T09/screenshot-02-generated.png",
+        "evals/evidence/T09/screenshot-03-edit.png",
+        "evals/evidence/T09/build.log",
+        "evals/evidence/T09/pytest.log",
+        "evals/evidence/T09/secret-scan.log",
+        "evals/evidence/T09/check_tasks.log",
+        "frontend/src/api/contestApi.ts",
+        "frontend/src/components/contest"
+      ],
       "dependencies": ["T07"],
       "acceptance": ["AC-00a", "AC-00b", "AC-00c", "AC-00d", "AC-11"]
     },

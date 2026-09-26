@@ -8,17 +8,17 @@
 ## 引き継ぎメモ（常に最新の状態に書き換える欄）
 - **最終更新**: 2026-09-26
 - **今の作業ブランチ**: `feature/contest-jev-questions`（土台: origin/feature/business-contest-rubric の b2dfe7f。upstream は未設定＝まだ push していない）
-- **最後に終わったこと**: T08 合格（`evals/evidence/T08/review.md`）
-- **次にやること**: T09（画面: 観点入力とQuestion確認・編集）
+- **最後に終わったこと**: T09 実装完了 → 評価役の検品待ち（status: review）
+- **次にやること**: T09 の検品 → 合格なら T10（画面: 音声アップロードと結果表示、保存済みQuestionsの選択）
 - **人間待ち**: なし（人間が T14 を確認して基準タグを更新済み: `harness-baseline` = f901d4b）
 - **後続タスクへの申し送り**（T03 評価役の指摘より。該当タスクの作業計画に入れること）:
   - T05: Jev に渡す `Score` の `instructions` が観点名（または観点の内容）になっていることをテストで確かめる（採用された P2(b)）
   - T05: 型の `levels` を、Jev の `Score(criteria=...)` に名前を変えて渡す。`low_confidence` は必ず `confidence < LOW_CONFIDENCE_THRESHOLD` から計算する（型では確かめていない）
   - T07/T09: Claude が観点と違う順番で Question を返しても今はそのまま通る。API か画面で観点の順に並べ直すか決める（T04 評価役の指摘2）
-  - T09: voice.md 2章「付け足した解釈は画面で人間に見せる」は、今の出力の型では解釈を区別できない。Question 確認画面（FR-3）で、観点の説明と Question を並べて見せるなどの方法を決める（T04 評価役の指摘1）
-  - T07: 受け付ける音声・動画の拡張子を決め、動画（mp4 など）でも Whisper に渡るかテストする（T06 評価役の指摘2）
-  - T07: `score_audio` に渡す一時ファイルの作成と削除は API 側の責任。エラーのときも一時ファイルが消えることをテストで確かめる（T06 評価役の指摘3）
-  - T07: API で観点を受け取るとき、配点に `"20"`・`20.0`・`true` が通らないよう strict にするか決める（今の型は Pydantic の標準の検査なので受け付ける）
+  - T09: voice.md 2章「付け足した解釈は画面で人間に見せる」は、今の出力の型では解釈を区別できない。Question 確認画面（FR-3）で、観点の説明と Question を並べて見せるなどの方法を決める（T04 評価役の指摘1）→ **T09 で対応**
+  - T07: 受け付ける音声・動画の拡張子を決め、動画（mp4 など）でも Whisper に渡るかテストする（T06 評価役の指摘2）→ **T07 で対応済み**
+  - T07: `score_audio` に渡す一時ファイルの作成と削除は API 側の責任。エラーのときも一時ファイルが消えることをテストで確かめる（T06 評価役の指摘3）→ **T07 で対応済み**
+  - T07: API で観点を受け取るとき、配点に `"20"`・`20.0`・`true` が通らないよう strict にするか決める（今の型は Pydantic の標準の検査なので受け付ける）→ **T07 で対応済み（strict）**
 - **注意**:
   - 依存関係は作業ブランチの内容で入れ直し済み（typesafe-sdk 0.7.1 の import、`npm run build` の成功を確認）
   - バックエンドのテスト: `cd backend && .venv/Scripts/python -m pytest -q`（開発用の道具は `pip install -r requirements-dev.txt`）
@@ -28,6 +28,19 @@
 ---
 
 ## 作業計画（計画役が書く・タスクごとに上書き）
+### T09 画面: コンテスト観点の入力フォームとQuestion確認・編集（AC-00a, AC-00b, AC-00c, AC-00d, AC-11）
+1. `frontend/src/types/contest.ts` に `SavedQuestionSet`・`SavedQuestionSetSummary` を追加（T08 でバックエンドに追加した形をミラー）
+2. `frontend/src/api/contestApi.ts` を新規作成: `ContestApiError`、`generateQuestions(rubric)`（POST /api/contest/questions）、`saveQuestionSet(name, questionSet)`（POST /api/contest/question-sets）。既存の `reviewApi.ts` と同じ作り（`detail` を日本語エラーとしてそのまま投げる）
+3. 画面はピッチ審査と別モードとして追加する（既存の審査フローは変えない）。`App.tsx` に「ピッチ審査」「コンテスト観点モード」の切り替えを追加
+4. `frontend/src/components/contest/CriteriaForm.tsx`: コンテスト名＋観点（名前・説明・配点）を1〜15個、追加・削除できる形で入力。観点の id はユーザーに見せず `c1, c2, …` を自動採番（Jev の id 形式の制約をユーザーに意識させない）。送信で `generateQuestions` を呼ぶ
+5. `frontend/src/components/contest/QuestionEditor.tsx`: 1つの Question を表示・編集。**観点の名前・説明を Question の指示文・段階と並べて見せる**（申し送り: AIが付け足した解釈を人間が見比べられるように。T04 評価役の指摘1への対応）。instructions と5段階の levels を編集できる
+6. `frontend/src/components/contest/QuestionSetReview.tsx`: `QuestionEditor` を並べる（**バックエンドが観点の順に並べ替え済みなので、画面側での並べ替えは不要** — T07 評価役の指摘2はサーバー側で解決済み、申し送りに追記して閉じる）。名前を付けて `saveQuestionSet` で保存するフォームを持つ
+7. `frontend/src/components/contest/ContestQuestionsPage.tsx`: 状態遷移（入力→生成中→確認・編集→保存中→保存済み／エラー）をまとめる
+8. スクリーンショット撮影（AC-11 の証拠）: 実際に Claude API を呼ぶとお金がかかり承認が必要なので、`backend/app/services/question_builder.generate_questions` を一時的に固定の QuestionSet を返す関数に差し替えて（コミットしない一時的な変更）バックエンドとフロントエンドを起動し、入力→生成結果→編集の3枚を撮る。撮影後は差し替えを元に戻す
+9. 証拠: `evals/evidence/T09/` に build.log、screenshot-01-form.png、screenshot-02-generated.png、screenshot-03-edit.png、secret-scan.log、check_tasks.log
+- 変更予定ファイル: `types/contest.ts`（追記）、新規 `api/contestApi.ts`・`components/contest/*`、`App.tsx`（モード切替の追記）、`index.css`（新しいクラスの追記）
+- 承認が必要な操作: なし。実 API は呼ばない（スクリーンショット用の一時差し替えはコミットしない）
+
 ### T08 Questions セットの保存・一覧・読み込み（AC-00a, AC-00c, AC-00d, AC-10）
 1. `backend/app/models/contest.py` に `SavedQuestionSet`（id・name・question_set・saved_at）と `SavedQuestionSetSummary`（id・name・contest_name・criteria_count・saved_at。一覧表示用の軽い形）を追加
 2. `backend/app/services/question_set_storage.py` を新規作成（`history.py` と同じ作りに揃える）
@@ -165,6 +178,16 @@
 - 証拠: `evals/evidence/T08/`（pytest.log: 132 passed、secret-scan.log、check_tasks.log）
 - 評価役の検品で **合格**（AC-00a/00c/00d/10 すべて○）。評価役は id を使った読み込みの安全性を重点的に確認し、パス操作のような id が2つの異なる経路（ルーティング自体・自作の検査）でどちらも404になることを再現した。name が空、question_set が壊れているときに保存前で400になり、ファイルが作られないことも確認
 - 評価役の指摘: (1) `backend/.gitignore` が `data/reviews/*.json` は除外しているが `data/question_sets/*.json` を除外していなかった（history.py と同じ作りに揃えるべき。今回のコミットに実データの混入はない）→ このタイミングで直した。(2) `SaveQuestionSetRequest.name` が他の型の書き方（RequiredText）と不統一（動作に問題はない）→ 記録のみ
+
+### 2026-09-26 T09 画面: コンテスト観点の入力フォームとQuestion確認・編集
+- 追加: `frontend/src/api/contestApi.ts`（generateQuestions・saveQuestionSet。一覧・読み込みは T10 で使うので今回は追加しない）、`frontend/src/components/contest/`（CriteriaForm・QuestionEditor・QuestionSetReview・ContestQuestionsPage）、`types/contest.ts` に `SavedQuestionSet`・`SavedQuestionSetSummary` を追記（T08 の型のミラー）
+- 既存の「ピッチ審査」画面は変えず、`App.tsx` にタブ切り替えで「コンテスト観点モード」を追加した
+- 観点の id（Jev の Score の名前に使う英数字IDで、Jev の questions のキーとして使われる）はユーザーに見せず `c1, c2, …` を自動採番。ユーザーは名前・説明・配点だけを入力する
+- 申し送りへの対応:
+  - Question の並び順（T07/T09 の申し送り）: バックエンド（T07）が既に観点順に並べ替え済みなので、画面側は受け取った順に表示するだけでよい。申し送りをクローズした
+  - 付け足した解釈の見せ方（T09 の申し送り）: `QuestionEditor` で、主催者が入力した観点の説明を Question の質問文・段階のすぐ上に表示し、見比べて編集できるようにした
+- スクリーンショット（AC-11 の証拠）: 実際に Claude API を呼ぶと料金と承認が必要なため、scratchpad の一時スクリプトで `question_builder.generate_questions` を固定の QuestionSet を返す関数に差し替えて起動した（コミットしない）。Playwright（scratchpad に一時インストール。chromium-cli が環境に無かったため `run` スキルの代替手順に従った）でブラウザを操作し、入力フォーム→生成結果→編集後の3枚を撮影。console エラーは0件。撮影後はサーバーを停止し、`git status` でリポジトリに一時ファイルが残っていないことを確認した
+- 証拠: `evals/evidence/T09/`（build.log、pytest.log: 132 passed（既存機能への影響なし）、screenshot-01/02/03、secret-scan.log、check_tasks.log）
 
 ---
 

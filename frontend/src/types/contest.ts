@@ -46,3 +46,18 @@ export interface ContestScoreResult {
   transcript: string;
   generated_at: string;
 }
+
+export interface SavedQuestionSet {
+  id: string;
+  name: string;
+  question_set: QuestionSet;
+  saved_at: string;
+}
+
+export interface SavedQuestionSetSummary {
+  id: string;
+  name: string;
+  contest_name: string;
+  criteria_count: number;
+  saved_at: string;
+}
