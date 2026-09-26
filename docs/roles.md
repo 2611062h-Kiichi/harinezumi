@@ -31,10 +31,10 @@
 | 返す成果物 | コード＋テスト、証拠ファイル（テストのログなど）、`tasks.json` の `status: "review"` と `evidence` の記入、コミット |
 | 完了条件 | 自分の環境でテストとビルドが通り、ログが証拠として保存されている／`python evals/check_tasks.py` がエラー0件 |
 
-**証拠の保存例**:
+**証拠の保存例**（ログの1行目には、実行したコマンドをそのまま `$ ` 付きで書く）:
 ```bash
 mkdir -p evals/evidence/T02
-cd backend && .venv/Scripts/python -m pytest -q 2>&1 | tee ../evals/evidence/T02/pytest.log
+cd backend && { echo '$ .venv/Scripts/python -m pytest -q'; .venv/Scripts/python -m pytest -q 2>&1; } | tee ../evals/evidence/T02/pytest.log
 ```
 
 ---
