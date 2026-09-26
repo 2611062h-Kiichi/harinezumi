@@ -151,7 +151,10 @@ button {
   transition: background-color var(--transition-fast), transform 100ms ease;
 }
 
-button:hover:not(:disabled) {
+/* :not(.link-button): a text-style button has no fill to darken; without
+   this exclusion it wins the specificity tie over .link-button:hover and
+   paints a solid background the same color as its own (invisible) text. */
+button:hover:not(:disabled):not(.link-button) {
   background: var(--accent-dark);
 }
 
@@ -353,8 +356,6 @@ button:disabled {
 }
 
 .link-button:hover {
-  /* Override the base button's hover background: a text link stays flat. */
-  background: none;
   color: var(--accent-dark);
 }
 

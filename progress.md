@@ -272,6 +272,14 @@
 - 証拠: `evals/evidence/ui-redesign/`（after-01-pitch-review.png、after-02-button-hover.png、after-03-contest-form-focus.png）。T番号は無いので `evals/acceptance.md` の対象外だが、変更前後の見た目を記録する目的で残す
 - 評価役による検品は行っていない（tasks.json のタスクではないため）。人間が実際に画面で確認する想定
 
+### 2026-09-27 UI改善の不具合修正: 「保存済みのQuestionsを使う」がホバー時に文字が見えなくなる
+- 人間の報告: コンテスト観点モードの「保存済みのQuestionsを使う」にカーソルを合わせると、オレンジ色のベタ塗りになって文字が見えなくなる
+- 原因: 前回追加した `.link-button:hover { background: none; ... }` は、汎用の `button:hover:not(:disabled) { background: var(--accent-dark); }` とCSSの詳細度（specificity）が同点になり、**あとに書かれた汎用ルールの方が勝っていた**。結果、背景がテキストと同じ色（accent-dark）に塗られ、文字が読めなくなっていた。詳細度の計算を誤っていたのが原因（この2つのCSSは「クラス1つ＋疑似クラス1つ」と「要素1つ＋疑似クラス2つ」で、疑似クラスの数は同じでも要素セレクタの分だけ後者が勝つ）
+- 直し方: 詳細度で競わせる代わりに、汎用ルールの側に `:not(.link-button)` を追記し、「文字だけのボタン（.link-button）には、そもそも塗りつぶしの背景色を適用しない」と明示した。あわせて、不要になった `.link-button:hover` 側の `background: none` は削除して簡潔にした
+- 確認: `npm run build` 成功、バックエンド既存テスト145件はそのまま合格。ローカルの開発サーバーで実際にホバーさせたスクリーンショットを撮り、文字が読めることを確認
+- 学んだこと: CSSの詳細度を「クラス+疑似クラスの数」だけで比較して「要素セレクタの有無」を見落とした。同点になりそうな場合は、詳細度で競わせるより `:not()` で明示的に対象を除外する方が、あとから見ても意図が分かりやすく安全
+- 証拠: `evals/evidence/ui-redesign/fix-link-button-hover.png`
+
 ---
 
 ## 学んだこと（改善の蓄積）
