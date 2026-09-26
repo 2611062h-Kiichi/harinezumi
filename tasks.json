@@ -131,13 +131,14 @@
       "id": "T07",
       "task": "API を追加する: POST /api/contest/questions（観点→Questions）、POST /api/contest/score（音声＋Questions→点数）。TestClient でテストする",
       "owner": "ai",
-      "status": "review",
-      "passes": false,
+      "status": "done",
+      "passes": true,
       "evidence": [
         "evals/evidence/T07/pytest.log",
         "evals/evidence/T07/secret-scan.log",
         "evals/evidence/T07/check_tasks.log",
         "evals/evidence/T07/review-1.md",
+        "evals/evidence/T07/review.md",
         "backend/app/routers/contest.py",
         "backend/app/utils/validation_messages.py",
         "backend/tests/test_contest_api.py"
