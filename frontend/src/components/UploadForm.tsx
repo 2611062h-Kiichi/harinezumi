@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
-import type { RubricMode, RubricPreviewResponse } from "../types/review";
+import type { CustomRubricCriterion, RubricMode, RubricPreviewResponse } from "../types/review";
 import { PoweredBy } from "./PoweredBy";
 import { RubricPreviewPanel } from "./RubricPreviewPanel";
 import { fetchRubricPreview, ReviewApiError } from "../api/reviewApi";
@@ -28,6 +28,7 @@ interface Props {
     mode: RubricMode,
     eventContext: string | null,
     criteriaNames: string[] | null,
+    customRubric: CustomRubricCriterion[] | null,
   ) => void;
 }
 
@@ -122,6 +123,22 @@ export function UploadForm({ onSubmit }: Props) {
       setError("音声/動画のURLは http:// または https:// から始まる必要があります。");
       return;
     }
+    // If the user already fetched (and possibly edited) a rubric preview,
+    // that edited version is authoritative — send it directly instead of
+    // re-deriving a rubric from event context / criteria names.
+    if (mode === "general" && rubricPreview) {
+      onSubmit(
+        slideFile,
+        mediaInputType === "file" ? mediaFile : null,
+        mediaInputType === "url" && mediaUrl ? mediaUrl : null,
+        mode,
+        null,
+        null,
+        rubricPreview.criteria.map((c) => ({ name: c.name, levels: c.levels })),
+      );
+      return;
+    }
+
     const useManualCriteria = mode === "general" && rubricInputType === "manual";
     if (useManualCriteria) {
       const names = parsedCriteriaNames();
@@ -137,6 +154,7 @@ export function UploadForm({ onSubmit }: Props) {
       mode,
       mode === "general" && rubricInputType === "event" && eventContext.trim() ? eventContext.trim() : null,
       useManualCriteria ? parsedCriteriaNames() : null,
+      null,
     );
   }
 
@@ -225,7 +243,13 @@ export function UploadForm({ onSubmit }: Props) {
           {rubricPreviewLoading ? "評価基準を生成中…" : "評価基準を確認する"}
         </button>
         {rubricPreviewError && <p className="error-text">{rubricPreviewError}</p>}
-        {rubricPreview && <RubricPreviewPanel preview={rubricPreview} />}
+        {rubricPreview && (
+          <RubricPreviewPanel
+            preview={rubricPreview}
+            editable={mode === "general"}
+            onChange={(criteria) => setRubricPreview((prev) => (prev ? { ...prev, criteria } : prev))}
+          />
+        )}
       </div>
 
       <label className="field">

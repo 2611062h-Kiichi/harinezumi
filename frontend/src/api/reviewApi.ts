@@ -1,4 +1,4 @@
-import type { PitchReviewResponse, RubricMode, RubricPreviewResponse } from "../types/review";
+import type { CustomRubricCriterion, PitchReviewResponse, RubricMode, RubricPreviewResponse } from "../types/review";
 
 const REQUEST_TIMEOUT_MS = 5 * 60 * 1000;
 
@@ -43,13 +43,16 @@ export async function submitPitchReview(
   mode: RubricMode,
   eventContext?: string | null,
   criteriaNames?: string[] | null,
+  customRubric?: CustomRubricCriterion[] | null,
 ): Promise<PitchReviewResponse> {
   const formData = new FormData();
   if (slideFile) {
     formData.append("slide_file", slideFile);
   }
   formData.append("mode", mode);
-  if (criteriaNames && criteriaNames.length > 0) {
+  if (customRubric && customRubric.length > 0) {
+    formData.append("custom_rubric_json", JSON.stringify(customRubric));
+  } else if (criteriaNames && criteriaNames.length > 0) {
     formData.append("criteria_names", criteriaNames.join("\n"));
   } else if (eventContext) {
     formData.append("event_context", eventContext);

@@ -254,13 +254,17 @@ async def resolve_rubric(
     mode: str,
     event_context: str | None,
     criteria_names: list[str] | None = None,
+    custom_criteria: list[dict] | None = None,
 ) -> tuple[list[dict], str, str]:
     """Resolves (rubric_criteria, mode_intro, rubric_label) for a mode +
-    optional event_context/criteria_names. Shared by generate_review() and
-    the rubric preview endpoint so both see exactly the same rubric.
-    `criteria_names`, when given, takes priority over `event_context`."""
+    optional event_context/criteria_names/custom_criteria. Shared by
+    generate_review() and the rubric preview endpoint so both see exactly
+    the same rubric. Priority: custom_criteria (a previously-previewed
+    rubric the user then edited by hand) > criteria_names > event_context."""
     if mode == "business":
         return BUSINESS_RUBRIC_CRITERIA, BUSINESS_INTRO, "ビジネスコンテスト向け（起業の科学ベース）"
+    if custom_criteria:
+        return custom_criteria, build_general_intro(event_context), "汎用ピッチ審査（カスタム評価項目）"
     if criteria_names:
         rubric_criteria = await generate_rubric_from_names(client, model, criteria_names)
         return rubric_criteria, build_general_intro(event_context), "汎用ピッチ審査（カスタム評価項目）"
@@ -277,6 +281,7 @@ async def generate_review(
     tone: str = DEFAULT_TONE,
     event_context: str | None = None,
     criteria_names: list[str] | None = None,
+    custom_criteria: list[dict] | None = None,
 ) -> PitchReviewResponse:
     if slides is None and not transcript:
         raise HTTPException(status_code=400, detail="スライド資料または音声/動画のいずれかを指定してください。")
@@ -293,7 +298,7 @@ async def generate_review(
     event_context = event_context.strip() if event_context else None
 
     rubric_criteria, mode_intro, rubric_label = await resolve_rubric(
-        client, settings.claude_model, mode, event_context, criteria_names
+        client, settings.claude_model, mode, event_context, criteria_names, custom_criteria
     )
 
     pitch_content = build_user_prompt(slides, transcript)

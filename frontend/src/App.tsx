@@ -3,7 +3,7 @@ import { UploadForm } from "./components/UploadForm";
 import { LoadingState } from "./components/LoadingState";
 import { ReviewResult } from "./components/ReviewResult";
 import { submitPitchReview, ReviewApiError } from "./api/reviewApi";
-import type { PitchReviewResponse, RubricMode } from "./types/review";
+import type { CustomRubricCriterion, PitchReviewResponse, RubricMode } from "./types/review";
 
 type Status = "idle" | "submitting" | "success" | "error";
 
@@ -19,11 +19,20 @@ export default function App() {
     mode: RubricMode,
     eventContext: string | null,
     criteriaNames: string[] | null,
+    customRubric: CustomRubricCriterion[] | null,
   ) {
     setStatus("submitting");
     setErrorMessage(null);
     try {
-      const result = await submitPitchReview(slideFile, mediaFile, mediaUrl, mode, eventContext, criteriaNames);
+      const result = await submitPitchReview(
+        slideFile,
+        mediaFile,
+        mediaUrl,
+        mode,
+        eventContext,
+        criteriaNames,
+        customRubric,
+      );
       setReview(result);
       setStatus("success");
     } catch (err) {

@@ -1,11 +1,14 @@
+import json
 import shutil
 import tempfile
 
 from anthropic import AsyncAnthropic
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
+from pydantic import ValidationError
 
 from app.config import get_settings
 from app.models.schemas import (
+    GeneratedCriterion,
     PitchReviewResponse,
     RubricCriterionPreview,
     RubricPreviewResponse,
@@ -48,6 +51,27 @@ def parse_criteria_names(raw: str | None) -> list[str] | None:
             detail=f"評価項目名は1つあたり{MAX_CRITERION_NAME_LENGTH}文字以内で入力してください。",
         )
     return names
+
+
+def parse_custom_rubric(raw: str | None) -> list[dict] | None:
+    """Parses the `custom_rubric_json` form field — a JSON array of
+    {name, levels} objects, typically a previously-previewed rubric the user
+    then edited by hand — into the same shape as the static rubrics."""
+    if not raw or not raw.strip():
+        return None
+    try:
+        items = json.loads(raw)
+    except json.JSONDecodeError as e:
+        raise HTTPException(status_code=400, detail="評価基準の形式が正しくありません。") from e
+    if not isinstance(items, list) or not (1 <= len(items) <= MAX_CRITERIA_NAMES):
+        raise HTTPException(
+            status_code=400, detail=f"評価基準は1〜{MAX_CRITERIA_NAMES}項目で指定してください。"
+        )
+    try:
+        parsed = [GeneratedCriterion.model_validate(item) for item in items]
+    except ValidationError as e:
+        raise HTTPException(status_code=400, detail=f"評価基準の形式が正しくありません: {e}") from e
+    return [{"id": f"c{i + 1}", "name": c.name, "levels": c.levels} for i, c in enumerate(parsed)]
 
 
 @router.get("/health")
@@ -119,6 +143,7 @@ async def create_review(
     tone: str = Form(DEFAULT_TONE),
     event_context: str | None = Form(None),
     criteria_names: str | None = Form(None),
+    custom_rubric_json: str | None = Form(None),
 ):
     if mode not in RUBRIC_MODES:
         raise HTTPException(status_code=400, detail=f"不明な審査モードです: {mode}")
@@ -130,6 +155,7 @@ async def create_review(
             detail=f"イベント内容は{MAX_EVENT_CONTEXT_LENGTH}文字以内で入力してください。",
         )
     parsed_criteria_names = parse_criteria_names(criteria_names)
+    parsed_custom_rubric = parse_custom_rubric(custom_rubric_json)
     if media_file is not None and media_url:
         raise HTTPException(status_code=400, detail="音声/動画はファイルとURLのどちらか一方のみ指定してください。")
     if slide_file is None and media_file is None and not media_url:
@@ -159,7 +185,7 @@ async def create_review(
             transcript = transcription.text
 
         review = await review_generator.generate_review(
-            slides, transcript, mode, tone, event_context, parsed_criteria_names
+            slides, transcript, mode, tone, event_context, parsed_criteria_names, parsed_custom_rubric
         )
         try:
             history.save_review(review)

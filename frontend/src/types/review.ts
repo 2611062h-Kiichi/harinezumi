@@ -40,3 +40,8 @@ export interface RubricPreviewResponse {
   rubric_mode_label: string;
   criteria: RubricCriterionPreview[];
 }
+
+export interface CustomRubricCriterion {
+  name: string;
+  levels: string[];
+}
