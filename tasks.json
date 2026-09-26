@@ -79,9 +79,16 @@
       "id": "T04",
       "task": "観点から Jev の Score Question を Claude で生成するサービス（question_builder.py）を作り、モック Claude でテストする",
       "owner": "ai",
-      "status": "todo",
+      "status": "review",
       "passes": false,
-      "evidence": [],
+      "evidence": [
+        "evals/evidence/T04/pytest.log",
+        "evals/evidence/T04/claude-output-schema.log",
+        "evals/evidence/T04/secret-scan.log",
+        "evals/evidence/T04/check_tasks.log",
+        "backend/app/services/question_builder.py",
+        "backend/tests/test_question_builder.py"
+      ],
       "dependencies": ["T03"],
       "acceptance": ["AC-00a", "AC-00c", "AC-00d", "AC-06"]
     },

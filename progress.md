@@ -8,8 +8,9 @@
 ## 引き継ぎメモ（常に最新の状態に書き換える欄）
 - **最終更新**: 2026-09-26
 - **今の作業ブランチ**: `feature/contest-jev-questions`（土台: origin/feature/business-contest-rubric の b2dfe7f。upstream は未設定＝まだ push していない）
-- **最後に終わったこと**: T03 合格（`evals/evidence/T03/review.md`）
-- **次にやること**: T04（観点 → Jev の Score Question を Claude で生成）
+- **最後に終わったこと**: T04 実装完了 → 評価役の検品待ち（status: review）
+- **次にやること**: T04 の検品 → 合格なら T05（Jev 採点）
+- **人間待ち**: T13 を追加したので、確認後に `git tag -f harness-baseline`
 - **後続タスクへの申し送り**（T03 評価役の指摘より。該当タスクの作業計画に入れること）:
   - T05: Jev に渡す `Score` の `instructions` が観点名（または観点の内容）になっていることをテストで確かめる（採用された P2(b)）
   - T05: 型の `levels` を、Jev の `Score(criteria=...)` に名前を変えて渡す。`low_confidence` は必ず `confidence < LOW_CONFIDENCE_THRESHOLD` から計算する（型では確かめていない）
@@ -24,21 +25,18 @@
 ---
 
 ## 作業計画（計画役が書く・タスクごとに上書き）
-### T03 観点・Question・採点結果の型定義（AC-00a, AC-00b, AC-00c, AC-00d, AC-05）
-1. `backend/app/models/contest.py` を新規作成（既存の schemas.py は触らない）。Pydantic の型:
-   - `ContestCriterion`: id（英数字・_・- の1〜40文字）、name（必須・前後の空白は除去・1〜100文字）、description（任意・〜1000文字）、max_points（1〜100 の整数）
-   - `ContestRubric`: contest_name（1〜100文字）、criteria（1〜15個、id の重複禁止）
-   - `JevScoreQuestion`: criterion_id、instructions（必須）、levels（ちょうど5個・低い順・空の段階は禁止）
-   - `QuestionSet`: rubric + questions。観点1つにつき Question 1つ（抜け・余分・重複・知らない id を禁止）
-   - `ContestCriterionResult`: criterion_id、name、max_points、jev_score（0〜4）、points（0〜配点）、confidence（0〜1）、low_confidence
-   - `ContestScoreResult`: contest_name、results、total_points、max_total_points、transcript、generated_at
-   - 定数: 段階数 5、観点の上限 15、確信度のしきい値 0.5（requirements.md FR-1/2/7 の値）
-   - 自作の検査のエラーメッセージは日本語にする
-2. `frontend/src/types/contest.ts` に同じ形の TypeScript の型を書く
-3. `backend/tests/test_contest_models.py`: 正しい入力が通ること＋AC-05 の各ケース（配点0、名前が空、観点16個、段階が5個でない、ID重複）と Question の抜け・余分がエラーになること
-4. 証拠: `evals/evidence/T03/` に pytest.log、build.log、secret-scan.log（`git add` 後に `git diff --cached`）、check_tasks.log（すべて1行目に実行コマンド）
-- 変更予定ファイル: 上の2つの新規ファイルとテスト（既存コードは変えない）
-- 承認が必要な操作: なし
+### T04 観点 → Jev の Score Question を Claude で生成（AC-00a, AC-00c, AC-00d, AC-06）
+1. `backend/app/services/question_builder.py` を新規作成: `generate_questions(rubric: ContestRubric) -> QuestionSet`
+   - Claude の呼び出しは既存の `review_generator._call_claude`（`messages.parse` ＋ Pydantic、エラーを日本語に変換済み）を使う。失敗時の文言が「AIレビュー」固定なので、引数で差し替えられるようにする（既定値は今のまま＝既存の動きは変わらない）
+   - モデルは既存の設定 `claude_model`（claude-sonnet-5）をそのまま使う
+   - Claude に求める出力の型は単純な形（criterion_id / instructions / levels の一覧）にする。SDK は API が対応しない制約（文字数など）を自動で外すため、細かい検査は T03 の `QuestionSet` で行う
+   - Claude の出力を `QuestionSet` に通し、抜け・余分・重複・段階数の誤りがあれば 502 と日本語のエラーにする（黙って直さない）
+   - プロンプトは docs/voice.md 2章に従う（1つの観点だけを聞く、低い順、観察できる事実で書く、主催者の観点の意味を変えない）
+   - ANTHROPIC_API_KEY が無ければ 400（Claude を呼ばない）
+2. `backend/tests/test_question_builder.py`（Claude は偽物）: 成功、プロンプトに観点の id・名前・説明・配点が入る、Question の抜け→エラー、余分→エラー、段階が5個でない→エラー、Claude が形の合わない出力を返した（parsed_output が None）→エラー、キー無し→400 で呼び出しなし
+3. 証拠: `evals/evidence/T04/` に pytest.log、secret-scan.log（`git add` 後に `--cached`）、check_tasks.log
+- 変更予定ファイル: 新規 `question_builder.py`・テスト、`review_generator.py`（`_call_claude` に引数を1つ追加するだけ）
+- 承認が必要な操作: なし（実 API は呼ばない）
 
 ---
 
@@ -92,6 +90,17 @@
 - 証拠: `evals/evidence/T03/`（pytest.log: 52 passed、build.log、secret-scan.log、check_tasks.log）
 - 評価役の検品で **合格**（AC-00a/00b/00c/00d/05 すべて○）。評価役はリポジトリの外で型を直接試し、AC-05 の5ケースがそれぞれ正しい理由でエラーになることを確認した。backend と frontend の型が一致することも機械的に比較して確認
 - 評価役の指摘のうち T05・T07 に関わるものは、引き継ぎメモの「後続タスクへの申し送り」に書いた。T03 自体の小さな改善は提案 P3 に書いた
+
+### 2026-09-26 採用された提案の記録
+- 人間「提案の2つを採用します」→ P2(b) は T05 の申し送りへ、P2(a)・P3 は新しいタスク T13 として tasks.json に追加（人間の決定による追加。基準タグの更新は人間待ち。それまで check_tasks は T13 について警告を出す）
+
+### 2026-09-26 T04 観点 → Jev の Score Question を Claude で生成
+- 追加: `backend/app/services/question_builder.py`（`generate_questions`）、`backend/tests/test_question_builder.py`（10テスト）
+- 変更: `review_generator._call_claude` に `failure_detail` 引数を追加（既定値は今までと同じ文言なので、既存の審査機能の動きは変わらない）
+- 決めたこと: Claude には単純な形（criterion_id / instructions / levels）で出力させ、T03 の `QuestionSet` で検査する。抜け・余分・重複・段階数の誤りは 502 と日本語のエラーにする（黙って直さない）
+- 確認: Claude API の資料（claude-api スキル）で、structured outputs は文字数・範囲などの制約に対応しないことを確認した。SDK の実物（`anthropic.transform_schema`）で、出力の型が対応済みの機能だけのスキーマになることを確かめ、テストにした（`claude-output-schema.log`）
+- モデルは既存設定の `claude-sonnet-5` のまま（資料の既定は claude-opus-5 だが、モデルを変えると費用と動きが変わるため、このタスクでは変えない）
+- 証拠: `evals/evidence/T04/`（pytest.log: 62 passed、claude-output-schema.log、secret-scan.log、check_tasks.log）
 
 ---
 

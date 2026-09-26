@@ -1,0 +1,48 @@
+$ cd backend && .venv/Scripts/python -c "import json, anthropic; from app.services.question_builder import GeneratedQuestions; print(json.dumps(anthropic.transform_schema(GeneratedQuestions), ensure_ascii=False, indent=1))"
+{
+ "$defs": {
+  "GeneratedQuestion": {
+   "type": "object",
+   "title": "GeneratedQuestion",
+   "properties": {
+    "criterion_id": {
+     "type": "string",
+     "title": "Criterion Id"
+    },
+    "instructions": {
+     "type": "string",
+     "title": "Instructions"
+    },
+    "levels": {
+     "type": "array",
+     "title": "Levels",
+     "items": {
+      "type": "string"
+     }
+    }
+   },
+   "additionalProperties": false,
+   "required": [
+    "criterion_id",
+    "instructions",
+    "levels"
+   ]
+  }
+ },
+ "type": "object",
+ "description": "Schema requested from Claude. Checked against QuestionSet afterwards.",
+ "title": "GeneratedQuestions",
+ "properties": {
+  "questions": {
+   "type": "array",
+   "title": "Questions",
+   "items": {
+    "$ref": "#/$defs/GeneratedQuestion"
+   }
+  }
+ },
+ "additionalProperties": false,
+ "required": [
+  "questions"
+ ]
+}

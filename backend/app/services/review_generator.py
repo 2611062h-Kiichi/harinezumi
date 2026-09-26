@@ -124,7 +124,17 @@ def build_score_context(mode: str, jev_scores: dict[str, JevCriterionScore]) -> 
 T = TypeVar("T", bound=BaseModel)
 
 
-async def _call_claude(client: AsyncAnthropic, model: str, system_prompt: str, user_prompt: str, output_format: type[T]) -> T:
+DEFAULT_FAILURE_DETAIL = "AIレビューの生成に失敗しました。もう一度お試しください。"
+
+
+async def _call_claude(
+    client: AsyncAnthropic,
+    model: str,
+    system_prompt: str,
+    user_prompt: str,
+    output_format: type[T],
+    failure_detail: str = DEFAULT_FAILURE_DETAIL,
+) -> T:
     try:
         response = await client.messages.parse(
             model=model,
@@ -150,10 +160,10 @@ async def _call_claude(client: AsyncAnthropic, model: str, system_prompt: str, u
         raise HTTPException(status_code=502, detail="Anthropic APIへの接続に失敗しました。ネットワークを確認してください。") from e
     except Exception as e:
         logger.exception("AI review generation failed")
-        raise HTTPException(status_code=502, detail="AIレビューの生成に失敗しました。もう一度お試しください。") from e
+        raise HTTPException(status_code=502, detail=failure_detail) from e
 
     if response.parsed_output is None:
-        raise HTTPException(status_code=502, detail="AIレビューの生成に失敗しました。もう一度お試しください。")
+        raise HTTPException(status_code=502, detail=failure_detail)
     return response.parsed_output
 
 
