@@ -12,22 +12,10 @@ export function RubricPreviewPanel({ preview, editable = false, onChange }: Prop
     onChange(preview.criteria.map((c, i) => (i === index ? { ...c, name } : c)));
   }
 
-  function updateLevel(critIndex: number, levelIndex: number, value: string) {
-    if (!onChange) return;
-    onChange(
-      preview.criteria.map((c, i) => {
-        if (i !== critIndex) return c;
-        const levels = [...c.levels];
-        levels[levelIndex] = value;
-        return { ...c, levels };
-      }),
-    );
-  }
-
   return (
     <div className="rubric-preview">
       <p className="rubric-preview-label">{preview.rubric_mode_label}</p>
-      {editable && <p className="note">項目名や判定基準を編集すると、審査時にその内容がそのまま使われます。</p>}
+      {editable && <p className="note">項目名を編集できます（審査時にその内容が使われます）。各点数の判定基準は変更できません。</p>}
       <ul className="rubric-preview-list">
         {preview.criteria.map((c, critIndex) => (
           <li key={c.id}>
@@ -47,16 +35,7 @@ export function RubricPreviewPanel({ preview, editable = false, onChange }: Prop
               <ol>
                 {c.levels.map((level, levelIndex) => (
                   <li key={levelIndex}>
-                    <span className="criterion-level-num">{levelIndex + 1}点</span>{" "}
-                    {editable ? (
-                      <textarea
-                        rows={2}
-                        value={level}
-                        onChange={(e) => updateLevel(critIndex, levelIndex, e.target.value)}
-                      />
-                    ) : (
-                      level
-                    )}
+                    <span className="criterion-level-num">{levelIndex + 1}点</span> {level}
                   </li>
                 ))}
               </ol>
