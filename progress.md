@@ -7,12 +7,12 @@
 
 ## 引き継ぎメモ（常に最新の状態に書き換える欄）
 - **最終更新**: 2026-09-27
-- **今の作業ブランチ**: `feature/contest-jev-questions`（土台: origin/feature/business-contest-rubric の b2dfe7f。upstream は未設定＝まだ push していない）
+- **今の作業ブランチ**: `feature/contest-jev-questions`（土台: origin/feature/business-contest-rubric の b2dfe7f。2026-09-27 に origin へ push 済み）
 - **最後に終わったこと**: T21（審査・採点の並列化）合格（`evals/evidence/T21/review.md`。1回目は URL 経路で有料の Whisper を止められず不合格→修正→再検品で合格）。合格後、テストが本物の履歴フォルダに書き込む不具合を見つけて修正。push はしていない
 - **次にやること**: 人間の判断待ち（提案 P9、push・本番反映の相談、`pitch/` のコミット）
 - **開発サーバーの起動（学んだこと）**: バックエンドは `--reload` なしで起動する（`--reload` の子プロセスが止めた後もポートを握り続けることがある）。画面が真っ白でビルドは通るときは Vite の再起動を試す。**Vite も止めたあと子プロセス（node vite.js）がポート5173に残ることがある**。再起動したら「Local: http://localhost:5173」で起動したかを必ず確かめ、5174 などになったら残った子プロセスを止める
 - **偽物サーバーで撮影するとき**: `.env` に本物のキーが入ったので、偽物サーバーでは ANTHROPIC / OPENAI / TYPESAFE のキーをすべてダミーで上書きし、使う外部呼び出しはすべて偽物に差し替える
-- **push の状況（2026-09-27）**: 人間「pushしてよいです」「すべてVercelでデプロイしようと思います」「（Cloudflare とは）違うアカウントです」。push 前に送る64コミットに `.env` やキーらしき文字列が無いことを確認し、新しいブランチとして `git push -u origin feature/contest-jev-questions` を実行 → **403 で拒否**（この PC の GitHub アカウント `neon08134-tech` に `2611062h-Kiichi/harinezumi` への書き込み権限が無い）。GitHub 側は何も変わっていない。進め方（持ち主に書き込み権限をもらう／自分のアカウントにフォークする等）は人間の判断待ち
+- **push の状況（2026-09-27）**: 人間「pushしてよいです」「すべてVercelでデプロイしようと思います」「（Cloudflare とは）違うアカウントです」。push 前に送る64コミットに `.env` やキーらしき文字列が無いことを確認し、新しいブランチとして `git push -u origin feature/contest-jev-questions` を実行 → **403 で拒否**（この PC の GitHub アカウント `neon08134-tech` に `2611062h-Kiichi/harinezumi` への書き込み権限が無い）。GitHub 側は何も変わっていない。人間の決定「持ち主に権限をもらう」→ 持ち主が neon08134-tech をコラボレーターに招待し、人間が承諾。再度 push して**成功**（新しいブランチ `origin/feature/contest-jev-questions`。main ともう一人の方のブランチには触れていない）。本番反映（Vercel の本番ブランチへの合流など）はもう一人の開発者と相談
 - **人間待ち**: 本番反映は、もう一人の開発者と相談するまで保留。`pitch/` と参考画像（`Screenshot 2026-09-27 050107.png`）をコミットするかは未定
 - **後続タスクへの申し送り**（T03 評価役の指摘より。該当タスクの作業計画に入れること）:
   - T05: Jev に渡す `Score` の `instructions` が観点名（または観点の内容）になっていることをテストで確かめる（採用された P2(b)）
