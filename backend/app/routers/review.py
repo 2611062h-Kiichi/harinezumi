@@ -83,8 +83,10 @@ def parse_custom_rubric(raw: str | None) -> list[dict] | None:
     return [{"id": f"c{i + 1}", "name": c.name, "levels": c.levels} for i, c in enumerate(parsed)]
 
 
-async def download_and_transcribe(media_url: str, tmp_dir: str, max_mb: int) -> TranscriptionResult:
-    media_path, media_filename = await asyncio.to_thread(download_audio_from_url, media_url, tmp_dir, max_mb)
+async def transcribe_download(download: "asyncio.Task[tuple[str, str]]") -> TranscriptionResult:
+    # shield: cancelling this step must not mark the download (a thread still
+    # writing into the temp dir) as finished.
+    media_path, media_filename = await asyncio.shield(download)
     return await transcribe(media_path, media_filename)
 
 
@@ -185,19 +187,24 @@ async def create_review(
     try:
         # Stage 1, all at once: slide extraction, transcription, video frame
         # extraction and the rubric (which depends only on the user's choices).
+        # Save every upload before starting any step, so a failed save can't
+        # leave a step running on a file the cleanup below is deleting.
+        slide_path = save_temp_upload(slide_file, tmp_dir) if slide_file is not None else None
+        media_path = save_temp_upload(media_file, tmp_dir) if media_file is not None else None
+
         stage = Stage()
         slides_task = frames_task = transcript_task = None
-        if slide_file is not None:
-            slide_path = save_temp_upload(slide_file, tmp_dir)
+        if slide_path is not None:
             slides_task = stage.in_thread(slide_extractor.extract_slides, slide_path, slide_file.filename)
-        if media_file is not None:
-            media_path = save_temp_upload(media_file, tmp_dir)
+        if media_path is not None:
             transcript_task = stage.call(transcribe(media_path, media_file.filename))
             if is_video_file(media_file.filename):
                 frames_task = stage.in_thread(extract_frames_base64, media_path)
         elif media_url:
-            # Downloads in a worker thread into tmp_dir, so it must not be cut loose.
-            transcript_task = stage.call(download_and_transcribe(media_url, tmp_dir, settings.max_media_mb), cancellable=False)
+            # The download writes into tmp_dir from a thread, so it is never cut
+            # loose; the paid Whisper call after it can still be cancelled.
+            download_task = stage.in_thread(download_audio_from_url, media_url, tmp_dir, settings.max_media_mb)
+            transcript_task = stage.call(transcribe_download(download_task))
         rubric_task = stage.call(
             review_generator.prepare_rubric(mode, event_context, parsed_criteria_names, parsed_custom_rubric)
         )

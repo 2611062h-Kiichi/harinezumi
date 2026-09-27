@@ -439,6 +439,8 @@
         "evals/evidence/T21/build.log",
         "evals/evidence/T21/secret-scan.log",
         "evals/evidence/T21/check_tasks.log",
+        "evals/evidence/T21/review-1.md",
+        "evals/evidence/T21/regression-before-fix.log",
         "backend/app/utils/concurrency.py",
         "backend/app/routers/review.py",
         "backend/app/services/contest_scorer.py",

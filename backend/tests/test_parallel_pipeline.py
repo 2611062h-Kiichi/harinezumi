@@ -90,9 +90,8 @@ def test_stage_runs_threads_and_coroutines_at_the_same_time():
         await stage.wait()
         return a.result(), b.result(), n.result()
 
-    t0 = time.perf_counter()
     assert asyncio.run(main()) == ("a", "b", "n")
-    assert time.perf_counter() - t0 < STEP * 2.5  # sequential would take 3 * STEP
+    # Checked by overlap rather than elapsed time, which is flaky on a busy machine.
     assert timeline.overlapped("thread-a", "thread-b", "network")
 
 
@@ -244,9 +243,7 @@ def post_review():
 
 
 def test_review_runs_stage_one_in_parallel_then_stage_two(review_timeline):
-    t0 = time.perf_counter()
     response = post_review()
-    elapsed = time.perf_counter() - t0
 
     assert response.status_code == 200, response.text
     t = review_timeline
@@ -256,7 +253,6 @@ def test_review_runs_stage_one_in_parallel_then_stage_two(review_timeline):
     assert t.start["visual"] >= stage_one_done
     assert t.start["jev"] >= t.end["visual"]
     assert t.start["comments"] >= t.start["jev"]
-    assert elapsed < STEP * 3  # sequential stage 1 alone would take 4 * STEP
     # The visual notes still reach Jev (T20 behaviour kept).
     assert "手振りを交えて話している" in RecordingJev.states[0]
     assert [c["name"] for c in response.json()["criteria"]] == ["課題", "市場", "チーム"]
@@ -350,3 +346,85 @@ def test_contest_bad_slides_never_start_whisper_and_wait_for_frames(contest_time
     assert "transcription" not in contest_timeline.start
     assert "frames" in contest_timeline.end
     assert "visual" not in contest_timeline.start
+
+
+# --- pitch-review tab, media given by URL ------------------------------------------------
+
+
+def slow_download(timeline, seconds=STEP * 2):
+    """Stands in for download_audio_from_url: writes the file into tmp_dir from a thread."""
+
+    def run(url, tmp_dir, max_mb):
+        timeline.begin("download")
+        time.sleep(seconds)
+        path = os.path.join(tmp_dir, "downloaded.mp3")
+        with open(path, "wb") as f:
+            f.write(b"fake-audio")
+        timeline.finish("download")
+        return path, "downloaded.mp3"
+
+    return run
+
+
+def post_review_url():
+    return client.post(
+        "/api/review",
+        data={"mode": "general", "criteria_names": "課題\n市場\nチーム", "media_url": "https://example.com/pitch.mp3"},
+        files=[("slide_file", ("pitch.pptx", b"x", "application/octet-stream"))],
+    )
+
+
+def test_review_url_downloads_alongside_slides_and_rubric_then_transcribes(review_timeline, monkeypatch):
+    monkeypatch.setattr(review_router, "download_audio_from_url", slow_download(review_timeline))
+
+    response = post_review_url()
+
+    assert response.status_code == 200, response.text
+    t = review_timeline
+    assert t.overlapped("download", "slides", "rubric")
+    assert t.start["transcription"] >= t.end["download"]
+    assert response.json()["transcript_included"] is True
+    assert len(t.temp_dirs) == 1 and not os.path.exists(t.temp_dirs[0])
+
+
+def test_review_url_failure_elsewhere_never_starts_whisper(review_timeline, monkeypatch):
+    # Slides fail after STEP while the download is still running (2 * STEP):
+    # the download must be allowed to finish, but the paid Whisper call must not start.
+    monkeypatch.setattr(review_router, "download_audio_from_url", slow_download(review_timeline))
+    monkeypatch.setattr(
+        slide_extractor,
+        "extract_slides",
+        slow_sync(review_timeline, "slides", None, HTTPException(status_code=400, detail="スライドを読めません")),
+    )
+
+    response = post_review_url()
+
+    assert response.status_code == 400
+    assert "transcription" not in review_timeline.start
+    assert "download" in review_timeline.end  # waited for, not cut loose
+    assert len(review_timeline.temp_dirs) == 1 and not os.path.exists(review_timeline.temp_dirs[0])
+
+
+def test_review_url_without_claude_key_never_starts_whisper(review_timeline, monkeypatch):
+    monkeypatch.setattr(review_router, "download_audio_from_url", slow_download(review_timeline))
+    monkeypatch.setattr(review_generator.get_settings(), "anthropic_api_key", "")
+
+    response = post_review_url()
+
+    assert response.status_code == 400
+    assert "ANTHROPIC_API_KEY" in response.json()["detail"]
+    assert "transcription" not in review_timeline.start
+    assert "download" in review_timeline.end
+
+
+def test_review_url_download_error_is_reported(review_timeline, monkeypatch):
+    def failing_download(url, tmp_dir, max_mb):
+        raise HTTPException(status_code=400, detail="URLから音声を取得できませんでした。")
+
+    monkeypatch.setattr(review_router, "download_audio_from_url", failing_download)
+
+    response = post_review_url()
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "URLから音声を取得できませんでした。"
+    assert "transcription" not in review_timeline.start

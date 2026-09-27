@@ -1,0 +1,4 @@
+$ cd backend && PYTHONIOENCODING=utf-8 .venv/Scripts/python -m pytest -q -p no:cacheprovider -rf tests/test_parallel_pipeline.py   # 差し戻し前のコミット 6e49f80 の routers/review.py（git stash で一時的に戻した状態）
+FAILED tests/test_parallel_pipeline.py::test_review_url_failure_elsewhere_never_starts_whisper
+FAILED tests/test_parallel_pipeline.py::test_review_url_without_claude_key_never_starts_whisper
+2 failed, 10 passed in 8.14s
