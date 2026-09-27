@@ -30,6 +30,16 @@
 ---
 
 ## 作業計画（計画役が書く・タスクごとに上書き）
+### T12 README に新機能の使い方・必要なキー・制約を書く（AC-00c, AC-00d, AC-14）
+- 人間の指示（2026-09-27）:「T12を進めてください」
+1. README の冒頭に2つのタブ（ピッチ審査／コンテスト観点モード）の説明
+2. 「コンテスト観点モード」の章: 使い方（画面の手順）、実測の所要時間（T11）、必要なAPIキーの表（Jev は必須でフォールバック無し、映像の分析は Claude キーが無ければ映像なし）、制限と注意（観点数・配点・5段階、スライド上限、Whisper の聞き違い、無音、映像分析の限界、保存場所）
+3. 前提条件の TypeSafe キーの説明を「ピッチ審査では任意・コンテスト観点モードでは必須」に
+4. セットアップ: `.env` を Git に入れない、Windows の `--reload` と Vite の残りプロセスの注意、自動テストの実行方法（お金がかからない）
+5. 動作確認にコンテスト観点モードの curl 例。Vercel の環境変数表にスライド上限を追加。`backend/.env.example` にも追加
+6. 証拠: README の curl 例を、外部APIをすべて偽物にしたサーバーに対して書かれたとおりに実行した記録（`readme-commands.log`）、secret-scan.log、check_tasks.log
+- 実 API・push・削除は含まない
+
 ### T20 コンテスト観点モードにも映像の分析を入れる（AC-00a, AC-00b, AC-00c, AC-00d, AC-08, AC-09, AC-12）
 - 人間の依頼（2026-09-27）:「コンテスト観点モードにも映像の分析を入れてください」
 1. `contest_scorer.score_audio`: スライド上限の確認 → Whisper 書き起こし → **書き起こしが空でなく**、ファイルが動画（`video_frames.is_video_file`）で、`ANTHROPIC_API_KEY` があるときだけ、`video_frames.extract_frames_base64` で静止画4枚 → ピッチ審査タブと同じ `review_generator.describe_presentation_visuals`（Claude が非言語的な表現を説明。失敗したら None）→ `score_materials` に `visual_description` を渡す

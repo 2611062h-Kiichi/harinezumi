@@ -1,0 +1,16 @@
+# README「動作確認」のコンテスト観点モードの手順を、書かれたとおりに実行した記録（外部API Claude/Whisper/Jev はすべて偽物にしたサーバー。キーもダミー。料金なし。Windows の Git Bash で実行）
+# 1回目: JSON をコマンドの中に直接書いた例は、Windows で日本語が文字化けして 400「採点観点をJSONとして読み取れませんでした。」になった → README をファイルで送る書き方に直した
+# README の例は sample.pdf だが、手元のサンプルが PPTX のため slide_file のみ sample.pptx に置き換えた
+$ cat rubric.json
+{
+  "contest_name": "学生ビジネスプランコンテスト",
+  "criteria": [
+    { "id": "c1", "name": "課題の明確さ", "description": "", "max_points": 30 },
+    { "id": "c2", "name": "市場性", "description": "", "max_points": 20 }
+  ]
+}
+$ curl -X POST http://localhost:8000/api/contest/questions -H "Content-Type: application/json" --data-binary "@rubric.json" -o questions.json
+HTTP 200
+$ curl -F "question_set=<questions.json" -F "slide_file=@sample.pptx" -F "media_file=@sample.mp3" http://localhost:8000/api/contest/score
+{"contest_name":"学生ビジネスプランコンテスト","results":[{"criterion_id":"c1","name":"課題の明確さ","max_points":30,"jev_score":3.2,"points":24.0,"confidence":0.82,"low_confidence":false},{"criterion_id":"c2","name":"市場性","max_points":20,"jev_score":1.4,"points":7.0,"confidence":0.38,"low_confidence":true}],"total_points":31.0,"max_total_points":50,"transcript":"私たちは、学生が就活情報を集めきれない課題を、AIの要約で解決します。","generated_at":"2026-09-27T01:52:28.392370Z","slides_included":true,"transcript_included":true,"visual_included":false,"visual_description":null}
+HTTP 200

@@ -234,9 +234,15 @@
       "id": "T12",
       "task": "README.md に新機能の使い方・必要なAPIキー・制約を追記する",
       "owner": "ai",
-      "status": "todo",
+      "status": "review",
       "passes": false,
-      "evidence": [],
+      "evidence": [
+        "README.md",
+        "backend/.env.example",
+        "evals/evidence/T12/readme-commands.log",
+        "evals/evidence/T12/secret-scan.log",
+        "evals/evidence/T12/check_tasks.log"
+      ],
       "dependencies": ["T11"],
       "acceptance": ["AC-00c", "AC-00d", "AC-14"]
     },
