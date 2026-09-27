@@ -325,6 +325,8 @@
         "evals/evidence/T17/screenshot-03-silent-audio-hint.png",
         "evals/evidence/T17/secret-scan.log",
         "evals/evidence/T17/check_tasks.log",
+        "evals/evidence/T17/review-1.md",
+        "evals/evidence/T17/regression-before-fix.log",
         "backend/app/services/contest_scorer.py",
         "backend/app/services/slide_extractor.py",
         "backend/tests/test_contest_slide_limits.py",

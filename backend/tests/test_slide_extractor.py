@@ -120,3 +120,27 @@ def test_empty_table_cells_are_skipped(tmp_path):
     presentation.save(path)
 
     assert extract_slides(str(path), "sparse.pptx").slides[0].text == "A | C"
+
+
+def make_pptx_with_geometry_less_shape(path):
+    # Valid OOXML that some non-PowerPoint tools write: an <p:sp> with no
+    # prstGeom/custGeom. python-pptx raises NotImplementedError from its
+    # shape_type for these, so the extractor must not rely on shape_type.
+    from pptx.enum.shapes import MSO_SHAPE
+    from pptx.oxml.ns import qn
+    from pptx.util import Inches
+
+    presentation = Presentation()
+    slide = presentation.slides.add_slide(presentation.slide_layouts[6])
+    shape = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, Inches(1), Inches(1), Inches(3), Inches(1))
+    shape.text_frame.text = "形の指定が無い図形の文字"
+    sp_pr = shape._element.spPr
+    sp_pr.remove(sp_pr.find(qn("a:prstGeom")))
+    presentation.save(path)
+
+
+def test_shape_without_geometry_is_still_read(tmp_path):
+    path = tmp_path / "nogeom.pptx"
+    make_pptx_with_geometry_less_shape(path)
+
+    assert extract_slides(str(path), "nogeom.pptx").slides[0].text == "形の指定が無い図形の文字"

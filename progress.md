@@ -355,6 +355,9 @@
 - 画面確認: T15 と同じく外部API（Claude・Whisper・Jev）だけ偽物にしたサーバーで撮影（61ページのPPTX→上限エラー、無音の音声＋スライド→案内）
 - つまずき: スクショ保存先のパスを bash のヒアドキュメントで書いたら `\\` が `\` 1つになり、JS のテンプレート文字列で `\s` が消えて `evals/evidence/T17screenshot-…png` という名前で保存された → 自分が直前に作ったファイルなので削除し、区切りを `/` にして撮り直した
 - 証拠: `evals/evidence/T17/`
+- **評価役の判定: 不合格（in_progress に差し戻し）**（`evals/evidence/T17/review.md`）。AC-00a/00b/00c/00d/09/12 と (a)(c) は○、(b) が×。理由: `_shape_texts` が全図形で `shape.shape_type` を呼ぶが、python-pptx は形の指定（prstGeom/custGeom）もテキストボックス印も無い図形で `NotImplementedError` を投げる。T17 前は読めていたそのような PPTX が、ピッチ審査タブ `/api/slides/extract` で **500**、コンテストでは「壊れています」の誤った400になる（回帰）。直し方の例: グループ判定を `isinstance(shape, GroupShape)` にする／`shape_type` の例外を捕まえて従来の読み方に戻す。その図形を含む PPTX のテスト（抽出・ピッチ審査タブ・コンテスト）を足す
+- 差し戻しへの対応: 評価役の指摘を自分でも再現（形の指定を消した図形で `NotImplementedError`）。グループの判定を `isinstance(shape, GroupShape)` に変更し、`shape_type` を使わないようにした。テスト2件追加（抽出処理、ピッチ審査タブ `/api/slides/extract` とコンテスト採点の両API）。差し戻し前の抽出処理ではこの2件が失敗し（`regression-before-fix.log`）、修正後は全体177件合格。1回目の検品記録は `review-1.md` に名前を変えて残した
+- 評価役の合否に影響しない指摘のうち、「画面の上限表示（60ページ・30,000文字）は config.py の値を手で写している」は未対応（.env で上限を変えたときは AudioScoreForm.tsx の数字も直す必要がある）
 
 ---
 

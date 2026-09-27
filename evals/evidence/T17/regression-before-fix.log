@@ -1,0 +1,4 @@
+$ cd backend && PYTHONIOENCODING=utf-8 .venv/Scripts/python -m pytest -q -p no:cacheprovider tests/test_slide_extractor.py tests/test_contest_slide_limits.py   # 差し戻し前のコミット 6b60d45 の抽出処理（git stash で一時的に戻した状態）
+FAILED tests/test_slide_extractor.py::test_shape_without_geometry_is_still_read
+FAILED tests/test_contest_slide_limits.py::test_geometry_less_shape_reads_in_both_modes
+2 failed, 16 passed in 3.38s

@@ -3,7 +3,7 @@ import os
 import pdfplumber
 from fastapi import HTTPException
 from pptx import Presentation
-from pptx.enum.shapes import MSO_SHAPE_TYPE
+from pptx.shapes.group import GroupShape
 
 from app.models.schemas import SlideContent, SlideExtractionResult
 
@@ -21,7 +21,9 @@ def _shape_texts(shapes) -> list[str]:
     """Text of each shape in order, looking inside groups (recursively) and tables."""
     texts: list[str] = []
     for shape in shapes:
-        if shape.shape_type == MSO_SHAPE_TYPE.GROUP:
+        # isinstance, not shape.shape_type: python-pptx raises NotImplementedError
+        # from shape_type for valid shapes that have no geometry element.
+        if isinstance(shape, GroupShape):
             texts.extend(_shape_texts(shape.shapes))
         elif shape.has_table:
             for row in shape.table.rows:

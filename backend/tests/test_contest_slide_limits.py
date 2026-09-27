@@ -11,7 +11,7 @@ from app.models.schemas import SlideContent, SlideExtractionResult
 from app.services import contest_scorer
 from tests.test_contest_audio import TRANSCRIPT, FakeOpenAI
 from tests.test_contest_scorer import QUESTION_SET
-from tests.test_contest_slides import BLANK_SLIDES, SLIDES, fakes, post  # noqa: F401  (fixture)
+from tests.test_contest_slides import BLANK_SLIDES, SLIDES, client, fakes, post  # noqa: F401  (fixture)
 
 
 def deck(pages: int, text: str = "課題", notes: str = "") -> SlideExtractionResult:
@@ -148,3 +148,23 @@ def test_api_silent_audio_with_slides_suggests_slides_only(fakes, tmp_path):
     assert response.status_code == 400
     assert "スライドだけで採点することもできます" in response.json()["detail"]
     assert fakes.calls == []
+
+
+# --- (b) regression: shapes python-pptx can't classify -----------------------------
+
+
+def test_geometry_less_shape_reads_in_both_modes(fakes, tmp_path):
+    from tests.test_slide_extractor import make_pptx_with_geometry_less_shape
+
+    path = tmp_path / "nogeom.pptx"
+    make_pptx_with_geometry_less_shape(path)
+    deck_bytes = path.read_bytes()
+
+    # Pitch-review tab shares the extractor.
+    review = client.post("/api/slides/extract", files={"file": ("nogeom.pptx", deck_bytes, "application/octet-stream")})
+    assert review.status_code == 200
+    assert review.json()["slides"][0]["text"] == "形の指定が無い図形の文字"
+
+    contest = post([("slide_file", ("nogeom.pptx", deck_bytes, "application/octet-stream"))])
+    assert contest.status_code == 200
+    assert "形の指定が無い図形の文字" in fakes.calls[0]["state"]
