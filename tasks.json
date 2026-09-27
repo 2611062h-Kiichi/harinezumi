@@ -408,6 +408,9 @@
         "evals/evidence/T20/screenshot-02-result-with-video.png",
         "evals/evidence/T20/secret-scan.log",
         "evals/evidence/T20/check_tasks.log",
+        "evals/evidence/T20/review-1.md",
+        "evals/evidence/T20/regression-before-fix.log",
+        "backend/app/services/video_frames.py",
         "backend/app/services/contest_scorer.py",
         "backend/tests/test_contest_video.py"
       ],

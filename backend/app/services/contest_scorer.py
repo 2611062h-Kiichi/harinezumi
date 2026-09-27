@@ -212,4 +212,6 @@ async def describe_video(video_path: str) -> str | None:
     if not frames:
         return None
     client = AsyncAnthropic(api_key=settings.anthropic_api_key)
-    return await describe_presentation_visuals(client, settings.claude_model, frames)
+    description = await describe_presentation_visuals(client, settings.claude_model, frames)
+    # A blank answer carries no visual signal; don't report the video as used.
+    return description.strip() if description and description.strip() else None

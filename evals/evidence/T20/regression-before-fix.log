@@ -1,0 +1,5 @@
+$ cd backend && PYTHONIOENCODING=utf-8 .venv/Scripts/python -m pytest -q -p no:cacheprovider -rf tests/test_contest_video.py   # 差し戻し前のコミット b6bfa3b の video_frames.py と contest_scorer.py（git stash で一時的に戻した状態）
+FAILED tests/test_contest_video.py::test_frame_extraction_releases_the_video_file
+FAILED tests/test_contest_video.py::test_api_real_mp4_is_analyzed_and_its_temp_dir_removed
+FAILED tests/test_contest_video.py::test_blank_visual_description_is_not_reported_as_used
+3 failed, 13 passed in 2.80s

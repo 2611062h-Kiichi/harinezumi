@@ -8,7 +8,9 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.main import app
+from app.routers import contest as contest_router
 from app.services import contest_scorer, jev_scorer, transcription
+from app.services.video_frames import extract_frames_base64 as real_extract_frames
 from app.services.contest_scorer import build_jev_state
 from tests.test_contest_audio import TRANSCRIPT, FakeOpenAI
 from tests.test_contest_scorer import QUESTION_SET, FakeTypeSafeClient
@@ -166,27 +168,68 @@ def test_jev_state_is_the_transcript_itself_without_slides_or_video():
 # --- API ---------------------------------------------------------------------------
 
 
-def test_api_mp4_upload_uses_video_and_cleans_up(fakes):
+def make_mp4(path, seconds=3):
+    """A tiny but real MPEG-4 video, so PyAV actually opens and decodes it."""
+    import av
+
+    with av.open(str(path), mode="w") as container:
+        stream = container.add_stream("mpeg4", rate=10)
+        stream.width, stream.height, stream.pix_fmt = 32, 32, "yuv420p"
+        for i in range(seconds * 10):
+            frame = av.VideoFrame(32, 32, "rgb24")
+            frame.planes[0].update(bytes([i * 8 % 256]) * (32 * 32 * 3))
+            for packet in stream.encode(frame.reformat(format="yuv420p")):
+                container.mux(packet)
+        for packet in stream.encode():
+            container.mux(packet)
+
+
+def test_frame_extraction_releases_the_video_file(tmp_path):
+    video = tmp_path / "pitch.mp4"
+    make_mp4(video)
+
+    assert len(real_extract_frames(str(video))) == 4
+    os.remove(video)  # fails on Windows while PyAV still holds the file open
+    assert not video.exists()
+
+
+def test_api_real_mp4_is_analyzed_and_its_temp_dir_removed(fakes, tmp_path, monkeypatch):
+    video = tmp_path / "pitch.mp4"
+    make_mp4(video)
+    monkeypatch.setattr(contest_scorer, "extract_frames_base64", real_extract_frames)
     created = []
-    real_extract = contest_scorer.extract_frames_base64
+    real_mkdtemp = contest_router.tempfile.mkdtemp
 
-    def recording_extract(path):
+    def recording_mkdtemp(*args, **kwargs):
+        path = real_mkdtemp(*args, **kwargs)
         created.append(path)
-        assert os.path.exists(path)  # the uploaded video is still on disk here
-        return real_extract(path)
+        return path
 
-    contest_scorer.extract_frames_base64 = recording_extract
-    try:
-        response = post([("media_file", ("pitch.mp4", b"fake-video-bytes", "video/mp4"))])
-    finally:
-        contest_scorer.extract_frames_base64 = real_extract
+    monkeypatch.setattr(contest_router.tempfile, "mkdtemp", recording_mkdtemp)
+
+    response = post([("media_file", ("pitch.mp4", video.read_bytes(), "video/mp4"))])
 
     assert response.status_code == 200
     body = response.json()
     assert body["visual_included"] is True
     assert body["visual_description"] == DESCRIPTION
+    images = [b for b in fakes.claude.calls[0]["messages"][0]["content"] if b["type"] == "image"]
+    assert len(images) == 4  # frames really came out of the uploaded video
     assert DESCRIPTION in fakes.jev.calls[0]["state"]
-    assert len(created) == 1 and not os.path.exists(created[0])  # temp upload removed afterwards
+    assert len(created) == 1 and not os.path.exists(created[0])  # upload's temp dir removed
+
+
+def test_blank_visual_description_is_not_reported_as_used(fakes, tmp_path, monkeypatch):
+    async def blank(self, **kwargs):
+        return SimpleNamespace(content=[SimpleNamespace(type="text", text="  ")])
+
+    monkeypatch.setattr(FakeVisionClaude, "_create", blank)
+
+    result = score_media(tmp_path, "pitch.mp4")
+
+    assert result.visual_included is False
+    assert result.visual_description is None
+    assert fakes.jev.calls[0]["state"] == TRANSCRIPT
 
 
 def test_api_mp3_upload_reports_no_video(fakes):
