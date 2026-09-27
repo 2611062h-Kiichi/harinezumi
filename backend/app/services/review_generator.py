@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from datetime import datetime, timezone
 from typing import TypeVar
@@ -350,11 +351,13 @@ async def generate_review(
     client = AsyncAnthropic(api_key=settings.anthropic_api_key)
     event_context = event_context.strip() if event_context else None
 
-    rubric_criteria, mode_intro, rubric_label = await resolve_rubric(
-        client, settings.claude_model, mode, event_context, criteria_names, custom_criteria
+    # Rubric resolution (may call Claude, optionally with web search) and
+    # video visual analysis (a separate Claude vision call) don't depend on
+    # each other, so run them concurrently rather than one after the other.
+    (rubric_criteria, mode_intro, rubric_label), visual_description = await asyncio.gather(
+        resolve_rubric(client, settings.claude_model, mode, event_context, criteria_names, custom_criteria),
+        describe_presentation_visuals(client, settings.claude_model, video_frames_base64 or []),
     )
-
-    visual_description = await describe_presentation_visuals(client, settings.claude_model, video_frames_base64 or [])
     pitch_content = build_user_prompt(slides, transcript, visual_description)
     jev_available = bool(settings.typesafe_api_key)
 

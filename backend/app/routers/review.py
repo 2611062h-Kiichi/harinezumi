@@ -1,3 +1,4 @@
+import asyncio
 import json
 import shutil
 import tempfile
@@ -170,23 +171,39 @@ async def create_review(
 
     tmp_dir = tempfile.mkdtemp()
     try:
-        slides = None
-        if slide_file is not None:
-            slide_path = save_temp_upload(slide_file, tmp_dir)
-            slides = slide_extractor.extract_slides(slide_path, slide_file.filename)
-
-        transcript = None
-        video_frames = None
+        media_path: str | None = None
+        media_filename: str | None = None
         if media_file is not None:
             media_path = save_temp_upload(media_file, tmp_dir)
-            if is_video_file(media_file.filename):
-                video_frames = extract_frames_base64(media_path)
-            transcription = await transcribe(media_path, media_file.filename)
-            transcript = transcription.text
+            media_filename = media_file.filename
         elif media_url:
-            media_path, media_filename = download_audio_from_url(media_url, tmp_dir, settings.max_media_mb)
+            media_path, media_filename = await asyncio.to_thread(
+                download_audio_from_url, media_url, tmp_dir, settings.max_media_mb
+            )
+
+        async def _extract_slides():
+            if slide_file is None:
+                return None
+            slide_path = save_temp_upload(slide_file, tmp_dir)
+            return await asyncio.to_thread(slide_extractor.extract_slides, slide_path, slide_file.filename)
+
+        async def _extract_frames():
+            if media_path is None or not is_video_file(media_filename):
+                return []
+            return await asyncio.to_thread(extract_frames_base64, media_path)
+
+        async def _transcribe_media():
+            if media_path is None:
+                return None
             transcription = await transcribe(media_path, media_filename)
-            transcript = transcription.text
+            return transcription.text
+
+        # Slide extraction, video frame extraction and audio transcription
+        # touch disjoint data (slides vs. media file), so run them concurrently
+        # instead of paying their latencies one after another.
+        slides, video_frames, transcript = await asyncio.gather(
+            _extract_slides(), _extract_frames(), _transcribe_media()
+        )
 
         review = await review_generator.generate_review(
             slides, transcript, mode, tone, event_context, parsed_criteria_names, parsed_custom_rubric, video_frames
