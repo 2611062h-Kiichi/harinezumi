@@ -13,7 +13,9 @@
 - **開発サーバーの起動（学んだこと）**: バックエンドは `--reload` なしで起動する（`--reload` の子プロセスが止めた後もポートを握り続けることがある）。画面が真っ白でビルドは通るときは Vite の再起動を試す。**Vite も止めたあと子プロセス（node vite.js）がポート5173に残ることがある**。再起動したら「Local: http://localhost:5173」で起動したかを必ず確かめ、5174 などになったら残った子プロセスを止める
 - **偽物サーバーで撮影するとき**: `.env` に本物のキーが入ったので、偽物サーバーでは ANTHROPIC / OPENAI / TYPESAFE のキーをすべてダミーで上書きし、使う外部呼び出しはすべて偽物に差し替える
 - **push の状況（2026-09-27）**: 人間「pushしてよいです」「すべてVercelでデプロイしようと思います」「（Cloudflare とは）違うアカウントです」。push 前に送る64コミットに `.env` やキーらしき文字列が無いことを確認し、新しいブランチとして `git push -u origin feature/contest-jev-questions` を実行 → **403 で拒否**（この PC の GitHub アカウント `neon08134-tech` に `2611062h-Kiichi/harinezumi` への書き込み権限が無い）。GitHub 側は何も変わっていない。人間の決定「持ち主に権限をもらう」→ 持ち主が neon08134-tech をコラボレーターに招待し、人間が承諾。再度 push して**成功**（新しいブランチ `origin/feature/contest-jev-questions`。main ともう一人の方のブランチには触れていない）。本番反映（Vercel の本番ブランチへの合流など）はもう一人の開発者と相談
-- **人間待ち**: 本番反映は、もう一人の開発者と相談するまで保留。`pitch/` と参考画像（`Screenshot 2026-09-27 050107.png`）をコミットするかは未定
+- **Vercel の状況（2026-09-27 13:21 ごろ）**: 人間が frontend・backend の両プロジェクトの本番ブランチを `feature/contest-jev-questions` に変更。デプロイが無かったので空コミット 8d9ca40 を push → **harinezumi-frontend・harinezumi-backend とも本番デプロイが失敗**（GitHub のコミット状態より。ログは Vercel 側でしか見られない）。直前（13:10〜13:11）にもう一人の開発者が `feature/business-contest-rubric` に push した3コミットのデプロイも同じく失敗しているので、コードではなく Vercel の設定（GitHub につないだ後の Root Directory など）が原因の可能性が高い。失敗したデプロイは本番に切り替わらないので、本番サイトは以前の成功した版のまま。**これ以上 push すると失敗する本番デプロイが増えるので、原因が分かるまで push しない**
+- **もう一人の開発者の新しいコミット（13:10〜13:11）**: 8510c86「審査の独立した処理を同時に実行して速くする」（`routers/review.py`・`review_generator.py`。こちらの T21 と同じ場所を変えているので、取り込むときは衝突を解く必要がある）、`harinezumi.html`（画面を1ファイルにまとめたもの。暗いデザイン）。まだ取り込んでいない
+- **人間待ち**: Vercel の失敗の原因（ビルドログ）の確認。`pitch/` と参考画像（`Screenshot 2026-09-27 050107.png`）をコミットするかは未定
 - **後続タスクへの申し送り**（T03 評価役の指摘より。該当タスクの作業計画に入れること）:
   - T05: Jev に渡す `Score` の `instructions` が観点名（または観点の内容）になっていることをテストで確かめる（採用された P2(b)）
   - T05: 型の `levels` を、Jev の `Score(criteria=...)` に名前を変えて渡す。`low_confidence` は必ず `confidence < LOW_CONFIDENCE_THRESHOLD` から計算する（型では確かめていない）
