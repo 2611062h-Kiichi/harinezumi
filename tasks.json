@@ -454,8 +454,8 @@
       "id": "T22",
       "task": "画面の見た目を CSS などで凝って良くする（ピッチ審査タブとコンテスト観点モードの両方）。明るい背景＋オレンジの方向性は保つ。redesign-existing-projects スキルの監査に沿って、フォント・色と面・ボタンなどの反応・余白と配置・読み込み中の表示・点数の見せ方・アイコン（ファビコン）を改善する。機能は変えない",
       "owner": "ai",
-      "status": "review",
-      "passes": false,
+      "status": "done",
+      "passes": true,
       "evidence": [
         "evals/evidence/T22/after-01-review-form-mobile.png",
         "evals/evidence/T22/after-01-review-form.png",
@@ -481,6 +481,7 @@
         "evals/evidence/T22/stub_t22.py",
         "evals/evidence/T22/secret-scan.log",
         "evals/evidence/T22/check_tasks.log",
+        "evals/evidence/T22/review.md",
         "frontend/src/index.css",
         "frontend/src/components/ScoreGauge.tsx",
         "frontend/src/components/LoadingState.tsx"

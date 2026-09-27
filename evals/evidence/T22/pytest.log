@@ -243,4 +243,4 @@ tests/test_transcription.py::test_returns_whisper_text PASSED            [ 99%]
 tests/test_transcription.py::test_missing_openai_key_is_a_clear_error PASSED [ 99%]
 tests/test_transcription.py::test_file_over_whisper_limit_is_rejected PASSED [100%]
 
-============================ 234 passed in 10.31s =============================
+============================ 234 passed in 10.08s =============================

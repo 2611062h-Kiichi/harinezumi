@@ -20,7 +20,7 @@
   --border-strong: #d8c9b7;
   --text: #2b1d17;
   --text-muted: #76675c;
-  --text-faint: #a39487;
+  --text-faint: #8f8074;
 
   /* The single accent. */
   --accent: #b8543a;
@@ -505,8 +505,9 @@ button:disabled {
   text-decoration-color: currentColor;
 }
 
-.question-set-review button,
-.contest-score-result button {
+/* Gap after a button that has another button next to it; putting it on the
+   left of the second one would indent that button when the row wraps. */
+button:not(.link-button):has(+ button:not(.link-button)) {
   margin-right: 10px;
 }
 
@@ -958,7 +959,7 @@ button:disabled {
   font-family: var(--font-display);
   font-size: 0.85rem;
   font-weight: 600;
-  color: var(--text-faint);
+  color: var(--text-muted);
   font-variant-numeric: tabular-nums;
 }
 
@@ -1043,12 +1044,6 @@ button:disabled {
 .saved-question-set-name {
   margin: 0 0 2px;
   font-weight: 700;
-}
-
-.overall-score-max {
-  font-size: 1.4rem;
-  font-weight: 400;
-  color: var(--text-muted);
 }
 
 .visual-description {
@@ -1223,7 +1218,7 @@ button:disabled {
   min-width: 2.4em;
   font-family: var(--font-display);
   font-weight: 600;
-  color: var(--text-faint);
+  color: var(--text-muted);
   font-variant-numeric: tabular-nums;
 }
 

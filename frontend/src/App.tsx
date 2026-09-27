@@ -69,7 +69,7 @@ export default function App() {
           <button
             type="button"
             className={appMode === "review" ? "app-mode-tab active" : "app-mode-tab"}
-            aria-current={appMode === "review" ? "page" : undefined}
+            aria-pressed={appMode === "review"}
             onClick={() => setAppMode("review")}
           >
             ピッチ審査
@@ -77,7 +77,7 @@ export default function App() {
           <button
             type="button"
             className={appMode === "contest" ? "app-mode-tab active" : "app-mode-tab"}
-            aria-current={appMode === "contest" ? "page" : undefined}
+            aria-pressed={appMode === "contest"}
             onClick={() => setAppMode("contest")}
           >
             コンテスト観点モード

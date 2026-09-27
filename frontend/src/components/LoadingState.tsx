@@ -26,11 +26,13 @@ export function LoadingState({ stages = DEFAULT_STAGES }: Props) {
   }, [stages]);
 
   return (
-    <div className="loading-state" role="status" aria-live="polite">
+    <div className="loading-state">
       <div className="spinner" aria-hidden="true" />
-      <p className="loading-current">{stages[stageIndex]}</p>
+      <p className="loading-current" role="status" aria-live="polite">
+        {stages[stageIndex]}
+      </p>
       {stages.length > 1 && (
-        <ol className="loading-steps">
+        <ol className="loading-steps" aria-hidden="true">
           {stages.map((stage, i) => (
             <li key={stage} className={i < stageIndex ? "done" : i === stageIndex ? "current" : undefined}>
               {stage.replace(/….*$/, "")}
