@@ -1,3 +1,4 @@
+import type { CSSProperties } from "react";
 import type { CriterionScore } from "../types/review";
 
 export function CriterionCard({ criterion }: { criterion: CriterionScore }) {
@@ -12,7 +13,7 @@ export function CriterionCard({ criterion }: { criterion: CriterionScore }) {
       <div className="criterion-bar">
         <div
           className="criterion-bar-fill"
-          style={{ width: `${(criterion.score / criterion.max_score) * 100}%` }}
+          style={{ "--fill": criterion.score / criterion.max_score } as CSSProperties}
         />
       </div>
       <p className="criterion-comment">{criterion.comment}</p>

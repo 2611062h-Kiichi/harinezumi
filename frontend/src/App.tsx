@@ -2,6 +2,7 @@ import { useState } from "react";
 import { UploadForm } from "./components/UploadForm";
 import { LoadingState } from "./components/LoadingState";
 import { ReviewResult } from "./components/ReviewResult";
+import { BrandMark } from "./components/BrandMark";
 import { ContestQuestionsPage } from "./components/contest/ContestQuestionsPage";
 import { submitPitchReview, ReviewApiError } from "./api/reviewApi";
 import type { CustomRubricCriterion, PitchReviewResponse, RubricMode } from "./types/review";
@@ -56,22 +57,33 @@ export default function App() {
         メインコンテンツへスキップ
       </a>
 
-      <nav className="app-mode-tabs">
-        <button
-          type="button"
-          className={appMode === "review" ? "app-mode-tab active" : "app-mode-tab"}
-          onClick={() => setAppMode("review")}
-        >
-          ピッチ審査
-        </button>
-        <button
-          type="button"
-          className={appMode === "contest" ? "app-mode-tab active" : "app-mode-tab"}
-          onClick={() => setAppMode("contest")}
-        >
-          コンテスト観点モード
-        </button>
-      </nav>
+      <header className="site-header">
+        <div className="brand">
+          <BrandMark />
+          <div>
+            <p className="brand-name">harinezumi</p>
+            <p className="brand-tagline">ピッチを、本番の審査基準で採点する</p>
+          </div>
+        </div>
+        <nav className="app-mode-tabs" aria-label="モード切り替え" data-active={appMode}>
+          <button
+            type="button"
+            className={appMode === "review" ? "app-mode-tab active" : "app-mode-tab"}
+            aria-current={appMode === "review" ? "page" : undefined}
+            onClick={() => setAppMode("review")}
+          >
+            ピッチ審査
+          </button>
+          <button
+            type="button"
+            className={appMode === "contest" ? "app-mode-tab active" : "app-mode-tab"}
+            aria-current={appMode === "contest" ? "page" : undefined}
+            onClick={() => setAppMode("contest")}
+          >
+            コンテスト観点モード
+          </button>
+        </nav>
+      </header>
 
       <div id="main-content">
         {appMode === "contest" ? (

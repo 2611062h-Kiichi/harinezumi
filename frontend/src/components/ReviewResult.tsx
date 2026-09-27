@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import confetti from "canvas-confetti";
 import type { PitchReviewResponse } from "../types/review";
 import { CriterionCard } from "./CriterionCard";
+import { ScoreGauge } from "./ScoreGauge";
 import { StrengthsList } from "./StrengthsList";
 import { ImprovementsList } from "./ImprovementsList";
 import { useCountUp } from "../hooks/useCountUp";
@@ -38,8 +39,8 @@ export function ReviewResult({ review, onReset }: Props) {
         {review.rubric_mode_label} ・ {review.feedback_tone_label}
       </p>
       <div className="overall-card">
-        <div className="overall-score">{animatedScore}</div>
-        <div>
+        <ScoreGauge value={animatedScore} max={100} />
+        <div className="overall-text">
           <p className="one-line-verdict">{review.one_line_verdict}</p>
           <p className="overall-summary">{review.overall_summary}</p>
           {!review.transcript_included && (

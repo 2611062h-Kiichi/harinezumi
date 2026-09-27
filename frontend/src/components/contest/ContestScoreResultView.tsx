@@ -1,4 +1,6 @@
+import type { CSSProperties } from "react";
 import type { ContestScoreResult } from "../../types/contest";
+import { ScoreGauge } from "../ScoreGauge";
 
 interface Props {
   result: ContestScoreResult;
@@ -23,9 +25,10 @@ export function ContestScoreResultView({ result, onScoreAgain, onReset }: Props)
       <p className="note">{sourceLabel(result)}</p>
 
       <div className="overall-card">
-        <div className="overall-score">
-          {result.total_points}
-          <span className="overall-score-max"> / {result.max_total_points}</span>
+        <ScoreGauge value={result.total_points} max={result.max_total_points} />
+        <div className="overall-text">
+          <p className="one-line-verdict">合計 {result.total_points} 点（{result.max_total_points} 点満点）</p>
+          <p className="overall-summary">観点ごとの点数は、Jev の判定を配点に合わせて換算したものです。</p>
         </div>
       </div>
 
@@ -41,7 +44,7 @@ export function ContestScoreResultView({ result, onScoreAgain, onReset }: Props)
                 </span>
               </div>
               <div className="criterion-bar">
-                <div className="criterion-bar-fill" style={{ width: `${(r.points / r.max_points) * 100}%` }} />
+                <div className="criterion-bar-fill" style={{ "--fill": r.points / r.max_points } as CSSProperties} />
               </div>
               {r.low_confidence && (
                 <p className="note criterion-confidence">

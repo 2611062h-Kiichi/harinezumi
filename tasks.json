@@ -449,6 +449,44 @@
       ],
       "dependencies": ["T18", "T20"],
       "acceptance": ["AC-00a", "AC-00b", "AC-00c", "AC-00d", "AC-08", "AC-09"]
+    },
+    {
+      "id": "T22",
+      "task": "画面の見た目を CSS などで凝って良くする（ピッチ審査タブとコンテスト観点モードの両方）。明るい背景＋オレンジの方向性は保つ。redesign-existing-projects スキルの監査に沿って、フォント・色と面・ボタンなどの反応・余白と配置・読み込み中の表示・点数の見せ方・アイコン（ファビコン）を改善する。機能は変えない",
+      "owner": "ai",
+      "status": "review",
+      "passes": false,
+      "evidence": [
+        "evals/evidence/T22/after-01-review-form-mobile.png",
+        "evals/evidence/T22/after-01-review-form.png",
+        "evals/evidence/T22/after-02-review-loading.png",
+        "evals/evidence/T22/after-03-review-result.png",
+        "evals/evidence/T22/after-04-contest-form-mobile.png",
+        "evals/evidence/T22/after-04-contest-form.png",
+        "evals/evidence/T22/after-05-contest-questions.png",
+        "evals/evidence/T22/after-06-contest-upload.png",
+        "evals/evidence/T22/after-07-contest-result.png",
+        "evals/evidence/T22/before-01-review-form-mobile.png",
+        "evals/evidence/T22/before-01-review-form.png",
+        "evals/evidence/T22/before-02-review-loading.png",
+        "evals/evidence/T22/before-03-review-result.png",
+        "evals/evidence/T22/before-04-contest-form-mobile.png",
+        "evals/evidence/T22/before-04-contest-form.png",
+        "evals/evidence/T22/before-05-contest-questions.png",
+        "evals/evidence/T22/before-06-contest-upload.png",
+        "evals/evidence/T22/before-07-contest-result.png",
+        "evals/evidence/T22/pytest.log",
+        "evals/evidence/T22/build.log",
+        "evals/evidence/T22/screenshot_t22.js",
+        "evals/evidence/T22/stub_t22.py",
+        "evals/evidence/T22/secret-scan.log",
+        "evals/evidence/T22/check_tasks.log",
+        "frontend/src/index.css",
+        "frontend/src/components/ScoreGauge.tsx",
+        "frontend/src/components/LoadingState.tsx"
+      ],
+      "dependencies": ["T21"],
+      "acceptance": ["AC-00a", "AC-00b", "AC-00c", "AC-00d", "AC-11", "AC-12"]
     }
   ]
 }

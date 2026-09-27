@@ -3,7 +3,7 @@ export function StrengthsList({ strengths }: { strengths: string[] }) {
   return (
     <section className="list-section">
       <h2>良かった点</h2>
-      <ul>
+      <ul className="strengths">
         {strengths.map((s, i) => (
           <li key={i}>{s}</li>
         ))}

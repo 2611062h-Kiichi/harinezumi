@@ -12,6 +12,8 @@ interface Props {
   stages?: string[];
 }
 
+// The server does not report progress, so stages advance on a timer as an
+// estimate; the last stage stays active until the response arrives.
 export function LoadingState({ stages = DEFAULT_STAGES }: Props) {
   const [stageIndex, setStageIndex] = useState(0);
 
@@ -24,9 +26,18 @@ export function LoadingState({ stages = DEFAULT_STAGES }: Props) {
   }, [stages]);
 
   return (
-    <div className="loading-state">
+    <div className="loading-state" role="status" aria-live="polite">
       <div className="spinner" aria-hidden="true" />
-      <p>{stages[stageIndex]}</p>
+      <p className="loading-current">{stages[stageIndex]}</p>
+      {stages.length > 1 && (
+        <ol className="loading-steps">
+          {stages.map((stage, i) => (
+            <li key={stage} className={i < stageIndex ? "done" : i === stageIndex ? "current" : undefined}>
+              {stage.replace(/….*$/, "")}
+            </li>
+          ))}
+        </ol>
+      )}
     </div>
   );
 }
