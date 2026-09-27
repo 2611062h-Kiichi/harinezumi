@@ -1,0 +1,8 @@
+$ cd backend && PYTHONIOENCODING=utf-8 .venv/Scripts/python -m pytest -q -p no:cacheprovider tests/test_merged_review_features.py   # 修正前のアプリのコード（git stash で一時的に戻した状態）
+FAILED tests/test_merged_review_features.py::test_history_still_loads_reviews_saved_before_levels_existed
+FAILED tests/test_merged_review_features.py::test_level_count_mismatch_for_user_named_criteria_is_japanese_502[too-few]
+FAILED tests/test_merged_review_features.py::test_level_count_mismatch_for_user_named_criteria_is_japanese_502[too-many]
+FAILED tests/test_merged_review_features.py::test_edited_rubric_errors_are_japanese_only[items0-2\u756a\u76ee\u306e\u9805\u76ee]
+FAILED tests/test_merged_review_features.py::test_edited_rubric_errors_are_japanese_only[items1-\u540d\u524d: \u5165\u529b\u3057\u3066\u304f\u3060\u3055\u3044]
+FAILED tests/test_merged_review_features.py::test_edited_rubric_errors_are_japanese_only[items2-1\u756a\u76ee\u306e\u9805\u76ee]
+6 failed, 22 passed in 3.11s

@@ -26,7 +26,8 @@ class CriterionScore(BaseModel):
     max_score: int = 5
     comment: str
     confidence: float | None = Field(default=None, ge=0, le=1)
-    levels: list[str]
+    # Optional so reviews saved before levels existed still load from history.
+    levels: list[str] = Field(default_factory=list)
 
 
 class ImprovementSuggestion(BaseModel):

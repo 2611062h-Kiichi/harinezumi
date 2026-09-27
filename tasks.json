@@ -359,6 +359,27 @@
       ],
       "dependencies": ["T17"],
       "acceptance": ["AC-00a", "AC-00b", "AC-00c", "AC-00d"]
+    },
+    {
+      "id": "T19",
+      "task": "採用された提案 P8 を反映する: (a) 判定基準（levels）が無い古い審査履歴も読み込めるようにする、(b) 項目名を指定したとき Claude が返した項目数が合わなければ判定基準が空のまま Jev に送らず日本語の 502 にする、(c) 編集したプレビューの形式エラーの文言を日本語にする（英語の生メッセージを出さない）、(d) index.html から使っていない Google Fonts の読み込みを外す",
+      "owner": "ai",
+      "status": "review",
+      "passes": false,
+      "evidence": [
+        "evals/evidence/T19/pytest.log",
+        "evals/evidence/T19/before-fix.log",
+        "evals/evidence/T19/build.log",
+        "evals/evidence/T19/secret-scan.log",
+        "evals/evidence/T19/check_tasks.log",
+        "backend/app/models/schemas.py",
+        "backend/app/services/review_generator.py",
+        "backend/app/routers/review.py",
+        "backend/tests/test_merged_review_features.py",
+        "frontend/index.html"
+      ],
+      "dependencies": ["T18"],
+      "acceptance": ["AC-00a", "AC-00b", "AC-00c", "AC-00d", "AC-09"]
     }
   ]
 }

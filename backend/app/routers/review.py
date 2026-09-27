@@ -22,6 +22,7 @@ from app.services.review_generator import DEFAULT_TONE, TONE_LABELS, resolve_rub
 from app.services.transcription import transcribe
 from app.services.video_frames import extract_frames_base64, is_video_file
 from app.utils.file_validation import save_temp_upload, validate_upload
+from app.utils.validation_messages import to_japanese
 
 router = APIRouter(prefix="/api")
 
@@ -68,10 +69,15 @@ def parse_custom_rubric(raw: str | None) -> list[dict] | None:
         raise HTTPException(
             status_code=400, detail=f"評価基準は1〜{MAX_CRITERIA_NAMES}項目で指定してください。"
         )
-    try:
-        parsed = [GeneratedCriterion.model_validate(item) for item in items]
-    except ValidationError as e:
-        raise HTTPException(status_code=400, detail=f"評価基準の形式が正しくありません: {e}") from e
+    parsed = []
+    for i, item in enumerate(items):
+        try:
+            parsed.append(GeneratedCriterion.model_validate(item))
+        except ValidationError as e:
+            raise HTTPException(
+                status_code=400,
+                detail=f"評価基準の{i + 1}番目の項目の形式が正しくありません（{to_japanese(e)}）。",
+            ) from e
     return [{"id": f"c{i + 1}", "name": c.name, "levels": c.levels} for i, c in enumerate(parsed)]
 
 

@@ -138,9 +138,17 @@ async def generate_rubric_from_names(client: AsyncAnthropic, model: str, names: 
     names_lines = chr(10).join(f"{i + 1}. {name}" for i, name in enumerate(names))
     user_prompt = f"評価項目名:\n{names_lines}\n\nそれぞれの項目について5段階の水準説明を設計してください。"
     result = await _call_claude(client, model, RUBRIC_FROM_NAMES_SYSTEM_PROMPT, user_prompt, GeneratedLevelsOutput)
+    if len(result.criteria) != len(names):
+        # Levels are matched to names by position, so a count mismatch would
+        # leave some criteria with empty or wrong levels.
+        logger.error("Claude returned levels for %d criteria, expected %d", len(result.criteria), len(names))
+        raise HTTPException(
+            status_code=502,
+            detail=f"評価項目{len(names)}個分の判定基準を作れませんでした。もう一度お試しください。",
+        )
     # Trust the user's names/order over whatever Claude echoed back; only take the levels.
     return [
-        {"id": f"c{i + 1}", "name": name, "levels": result.criteria[i].levels if i < len(result.criteria) else []}
+        {"id": f"c{i + 1}", "name": name, "levels": result.criteria[i].levels}
         for i, name in enumerate(names)
     ]
 

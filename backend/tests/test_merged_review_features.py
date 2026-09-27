@@ -257,3 +257,73 @@ def test_frame_extraction_returns_evenly_spaced_jpegs_from_a_real_video(tmp_path
 
     assert len(frames) == video_frames.NUM_FRAMES
     assert all(base64.b64decode(f).startswith(b"\xff\xd8") for f in frames)  # JPEG magic
+
+
+# --- P8 (T19) -----------------------------------------------------------------------
+
+
+def test_history_still_loads_reviews_saved_before_levels_existed(tmp_path, monkeypatch):
+    import json
+
+    from app.services import history
+
+    monkeypatch.setattr(history, "DATA_DIR", str(tmp_path))
+    old_review = {
+        "overall_score": 60,
+        "overall_summary": "総評",
+        "criteria": [{"id": "c1", "name": "課題", "score": 3, "max_score": 5, "comment": "コメント", "confidence": 0.7}],
+        "strengths": [],
+        "improvements": [],
+        "one_line_verdict": "一言",
+        "generated_at": "2026-09-01T00:00:00Z",
+        "transcript_included": False,
+        "rubric_mode": "general",
+        "rubric_mode_label": "汎用ピッチ審査",
+        "feedback_tone": "normal",
+        "feedback_tone_label": "普通",
+    }
+    (tmp_path / "old.json").write_text(json.dumps(old_review, ensure_ascii=False), encoding="utf-8")
+
+    response = client.get("/api/reviews/history")
+
+    assert response.status_code == 200
+    assert response.json()[0]["criteria"][0]["levels"] == []
+
+
+@pytest.mark.parametrize("returned", [2, 4], ids=["too-few", "too-many"])
+def test_level_count_mismatch_for_user_named_criteria_is_japanese_502(fake_claude, fake_jev, returned):
+    from fastapi import HTTPException
+
+    fake_claude.outputs[GeneratedLevelsOutput] = GeneratedLevelsOutput(criteria=criteria(*[f"x{i}" for i in range(returned)]))
+
+    with pytest.raises(HTTPException) as excinfo:
+        resolve(names=["課題", "市場", "チーム"])
+
+    assert excinfo.value.status_code == 502
+    assert excinfo.value.detail == "評価項目3個分の判定基準を作れませんでした。もう一度お試しください。"
+    assert fake_jev.calls == []
+
+
+@pytest.mark.parametrize(
+    "items, expected",
+    [
+        ([{"name": "課題", "levels": LEVELS}, {"name": "市場", "levels": ["一つだけ"]}], "2番目の項目"),
+        ([{"levels": LEVELS}], "名前: 入力してください"),
+        (["文字列だけ"], "1番目の項目"),
+    ],
+)
+def test_edited_rubric_errors_are_japanese_only(fake_claude, items, expected):
+    import json
+    import re
+
+    response = client.post(
+        "/api/review",
+        data={"mode": "general", "custom_rubric_json": json.dumps(items, ensure_ascii=False)},
+        files={"slide_file": ("pitch.pptx", b"x", "application/octet-stream")},
+    )
+
+    detail = response.json()["detail"]
+    assert response.status_code == 400
+    assert expected in detail
+    assert not re.search(r"[A-Za-z]{4,}", detail), detail  # no raw English from Pydantic
+    assert fake_claude.parse_calls == []
