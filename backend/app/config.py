@@ -13,7 +13,13 @@ class Settings(BaseSettings):
     whisper_model: str = "whisper-1"
     max_slide_mb: int = 20
     max_media_mb: int = 25  # Whisper's hard per-file limit
+    # Comma-separated, e.g. "https://harinezumi-frontend.vercel.app,null"
+    # ("null" is the origin of the standalone harinezumi.html opened as a file).
     cors_origin: str = "http://localhost:5173"
+
+    @property
+    def cors_origins(self) -> list[str]:
+        return [o.strip() for o in self.cors_origin.split(",") if o.strip()]
 
 
 @lru_cache
