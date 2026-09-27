@@ -424,6 +424,28 @@
       ],
       "dependencies": ["T15", "T18"],
       "acceptance": ["AC-00a", "AC-00b", "AC-00c", "AC-00d", "AC-08", "AC-09", "AC-12"]
+    },
+    {
+      "id": "T21",
+      "task": "審査・採点を並列化して速くする（ピッチ審査タブとコンテスト観点モードの両方）: 第1段でスライド抽出・音声の書き起こし・動画からの静止画の取り出し（ピッチ審査タブでは評価基準の取得・生成も）を同時に進め、すべて出そろってから第2段で身振り・表情の分析、そのあと採点とコメントを行う。コンテスト観点モードでは人間の決定により、書き起こし（有料）はスライドの確認（抽出と上限チェック）が終わってから始める（静止画の取り出しは最初から同時）。どれかが失敗したら、まだ動いている通信（有料）は打ち切り、ファイルを読んでいる処理は終わるのを待ってから一時フォルダを消す。映像が採点に使われる仕組み（T20）と、書き起こしが空なら映像分析をしない決まりは保つ",
+      "owner": "ai",
+      "status": "review",
+      "passes": false,
+      "evidence": [
+        "evals/evidence/T21/pytest.log",
+        "evals/evidence/T21/before-fix.log",
+        "evals/evidence/T21/timing.log",
+        "evals/evidence/T21/timing_t21.py",
+        "evals/evidence/T21/build.log",
+        "evals/evidence/T21/secret-scan.log",
+        "evals/evidence/T21/check_tasks.log",
+        "backend/app/utils/concurrency.py",
+        "backend/app/routers/review.py",
+        "backend/app/services/contest_scorer.py",
+        "backend/tests/test_parallel_pipeline.py"
+      ],
+      "dependencies": ["T18", "T20"],
+      "acceptance": ["AC-00a", "AC-00b", "AC-00c", "AC-00d", "AC-08", "AC-09"]
     }
   ]
 }

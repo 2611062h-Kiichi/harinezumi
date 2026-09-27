@@ -1,0 +1,7 @@
+$ cd backend && PYTHONIOENCODING=utf-8 .venv/Scripts/python -m pytest -q -p no:cacheprovider -rf tests/test_parallel_pipeline.py   # 変更前のアプリのコード（routers/review.py・routers/contest.py・contest_scorer.py・review_generator.py を git stash で一時的に戻した状態）
+FAILED tests/test_parallel_pipeline.py::test_review_runs_stage_one_in_parallel_then_stage_two
+FAILED tests/test_parallel_pipeline.py::test_review_failure_cancels_paid_calls_and_removes_temp_dir
+FAILED tests/test_parallel_pipeline.py::test_review_without_claude_key_fails_fast_without_waiting_for_whisper
+FAILED tests/test_parallel_pipeline.py::test_contest_extracts_frames_alongside_slides_and_transcription
+FAILED tests/test_parallel_pipeline.py::test_contest_bad_slides_never_start_whisper_and_wait_for_frames
+5 failed, 3 passed in 16.71s

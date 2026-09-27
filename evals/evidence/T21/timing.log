@@ -1,0 +1,12 @@
+# T21 所要時間の比較。外部API・重い処理（スライド抽出・書き起こし・静止画の取り出し・評価基準の生成・映像分析・Jev・コメント）をすべて「1秒かかる偽物」にして、同じ入力で変更前と変更後を比べた（本物のAPIは呼んでいない）
+# スクリプト: evals/evidence/T21/timing_t21.py（実行時は scratchpad に置き、backend/ から実行した）
+
+## 変更前（T21 の変更を git stash で一時的に外した状態）
+$ cd backend && PYTHONIOENCODING=utf-8 .venv/Scripts/python "C:/Users/tomo2/AppData/Local/Temp/claude/C--Users-tomo2-OneDrive-Desktop---------------/ee112c7d-a1f6-46ac-bda4-71c276e699e2/scratchpad/timing_t21.py" | grep -v Warning
+ピッチ審査タブ（スライド＋動画＋項目名から評価基準を生成）: HTTP 200、7.1秒
+コンテスト観点モード（スライド＋動画）: HTTP 200、5.0秒
+
+## 変更後
+$ cd backend && PYTHONIOENCODING=utf-8 .venv/Scripts/python "C:/Users/tomo2/AppData/Local/Temp/claude/C--Users-tomo2-OneDrive-Desktop---------------/ee112c7d-a1f6-46ac-bda4-71c276e699e2/scratchpad/timing_t21.py" | grep -v Warning
+ピッチ審査タブ（スライド＋動画＋項目名から評価基準を生成）: HTTP 200、4.1秒
+コンテスト観点モード（スライド＋動画）: HTTP 200、4.0秒

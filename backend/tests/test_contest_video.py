@@ -143,7 +143,8 @@ def test_blank_transcript_is_rejected_before_paying_for_visual_analysis(fakes, t
         score_media(tmp_path, "pitch.mp4")
 
     assert excinfo.value.status_code == 400
-    assert fakes.frames == []
+    # Frame extraction is free and runs alongside Whisper (T21); the paid
+    # Claude visual analysis must still never start.
     assert fakes.claude.calls == []
     assert fakes.jev.calls == []
 
@@ -157,8 +158,9 @@ def test_oversized_slides_are_rejected_before_whisper_or_video(fakes, tmp_path, 
         score_media(tmp_path, "pitch.mp4", slides=SLIDES)  # SLIDES has 2 pages
 
     assert fakes.whisper.calls == []
-    assert fakes.frames == []
+    # Frame extraction (free) may already have run alongside the slide check (T21).
     assert fakes.claude.calls == []
+    assert fakes.jev.calls == []
 
 
 def test_jev_state_is_the_transcript_itself_without_slides_or_video():

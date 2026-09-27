@@ -1,0 +1,3 @@
+$ backend/.venv/Scripts/python evals/check_tasks.py
+WARN : T21: 基準に無い新しいタスクです。人間が追加したなら基準タグを更新してください。
+結果: エラー 0 件 / 警告 1 件 / 完了 21/22 タスク

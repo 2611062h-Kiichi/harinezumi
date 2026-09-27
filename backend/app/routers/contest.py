@@ -114,13 +114,15 @@ async def score_pitch(request: Request):
 
     tmp_dir = tempfile.mkdtemp()
     try:
-        slides = None
+        load_slides = None
         if slide_file is not None:
-            slides = read_slides(save_temp_upload(slide_file, tmp_dir), slide_file.filename)
-        if media_file is None:
-            return await contest_scorer.score_materials(questions, slides=slides)
-        media_path = save_temp_upload(media_file, tmp_dir)
-        return await contest_scorer.score_audio(questions, media_path, media_file.filename, slides=slides)
+            slide_path, slide_name = save_temp_upload(slide_file, tmp_dir), slide_file.filename
+            load_slides = lambda: read_slides(slide_path, slide_name)  # noqa: E731
+        media_path = save_temp_upload(media_file, tmp_dir) if media_file is not None else None
+        media_name = media_file.filename if media_file is not None else None
+        # Returns only after every step touching the uploads has finished,
+        # so the temp dir below can be removed.
+        return await contest_scorer.score_upload(questions, media_path, media_name, load_slides)
     finally:
         shutil.rmtree(tmp_dir, ignore_errors=True)
 

@@ -4,7 +4,9 @@ Jev only rates each criterion on its 0-based level scale; conversion to the
 contest's points and the total are computed here, deterministically.
 """
 
+import asyncio
 import logging
+from collections.abc import Callable
 from datetime import datetime, timezone
 from decimal import ROUND_HALF_UP, Decimal
 
@@ -24,6 +26,7 @@ from app.services.jev_scorer import run_system_one
 from app.services.review_generator import build_user_prompt, describe_presentation_visuals
 from app.services.transcription import transcribe
 from app.services.video_frames import extract_frames_base64, is_video_file
+from app.utils.concurrency import Stage
 
 logger = logging.getLogger(__name__)
 
@@ -187,30 +190,62 @@ async def score_audio(
     slides: SlideExtractionResult | None = None,
 ) -> ContestScoreResult:
     """Transcribes the pitch with Whisper and scores it (with slides, if any) with Jev."""
-    if slides is not None:
-        # Before transcription, so an oversized deck doesn't cost a Whisper call.
-        check_slide_limits(slides)
-    transcription = await transcribe(audio_path, filename)
+    load_slides = (lambda: slides) if slides is not None else None
+    return await score_upload(question_set, audio_path, filename, load_slides)
+
+
+async def score_upload(
+    question_set: QuestionSet,
+    media_path: str | None = None,
+    media_filename: str | None = None,
+    load_slides: Callable[[], SlideExtractionResult] | None = None,
+) -> ContestScoreResult:
+    """Scores an uploaded pitch in two stages.
+
+    Stage 1 runs at the same time: (slide extraction -> slide limit check ->
+    Whisper) and, for a video, frame extraction. Whisper waits for the slide
+    check so a bad or oversized deck never costs a transcription.
+    Stage 2, once all of that is in: the paid visual analysis (only if there
+    is something to score), then Jev, which gets the visual notes as input.
+    """
+    settings = get_settings()
+    stage = Stage()
+
+    async def slides_then_transcript() -> tuple[SlideExtractionResult | None, str | None]:
+        slides = await asyncio.to_thread(load_slides) if load_slides is not None else None
+        if slides is not None:
+            check_slide_limits(slides)
+        if media_path is None:
+            return slides, None
+        return slides, (await transcribe(media_path, media_filename)).text
+
+    # Not cancellable: it may be reading the slide file in a worker thread.
+    materials = stage.call(slides_then_transcript(), cancellable=False)
+    frames = None
+    if media_path is not None and is_video_file(media_filename):
+        if settings.anthropic_api_key:
+            frames = stage.in_thread(extract_frames_base64, media_path)
+        else:
+            logger.warning("ANTHROPIC_API_KEY not set; scoring the video without visual analysis")
+    await stage.wait()
+
+    slides, transcript = materials.result()
     visual_description = None
-    if transcription.text.strip() and is_video_file(filename):
+    if frames is not None and transcript and transcript.strip():
         # Only once scoring can go ahead: describing frames is a paid Claude call.
-        visual_description = await describe_video(audio_path)
+        visual_description = await describe_frames(frames.result())
     return await score_materials(
-        question_set, slides=slides, transcript=transcription.text, visual_description=visual_description
+        question_set, slides=slides, transcript=transcript, visual_description=visual_description
     )
 
 
-async def describe_video(video_path: str) -> str | None:
+async def describe_frames(frames: list[str]) -> str | None:
     """Best-effort description of the speaker's non-verbal delivery, as in the
-    pitch-review mode. None (score without it) if there's no Claude key, no
-    usable frames, or the Claude call fails."""
-    settings = get_settings()
-    if not settings.anthropic_api_key:
-        logger.warning("ANTHROPIC_API_KEY not set; scoring the video without visual analysis")
-        return None
-    frames = extract_frames_base64(video_path)
+    pitch-review mode. None (score without it) if there are no usable frames
+    or the Claude call fails."""
     if not frames:
         return None
+    settings = get_settings()
     client = AsyncAnthropic(api_key=settings.anthropic_api_key)
     description = await describe_presentation_visuals(client, settings.claude_model, frames)
     # A blank answer carries no visual signal; don't report the video as used.

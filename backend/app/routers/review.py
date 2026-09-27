@@ -1,3 +1,4 @@
+import asyncio
 import json
 import shutil
 import tempfile
@@ -21,6 +22,7 @@ from app.services.media_url import download_audio_from_url
 from app.services.review_generator import DEFAULT_TONE, TONE_LABELS, resolve_rubric
 from app.services.transcription import transcribe
 from app.services.video_frames import extract_frames_base64, is_video_file
+from app.utils.concurrency import Stage
 from app.utils.file_validation import save_temp_upload, validate_upload
 from app.utils.validation_messages import to_japanese
 
@@ -79,6 +81,11 @@ def parse_custom_rubric(raw: str | None) -> list[dict] | None:
                 detail=f"評価基準の{i + 1}番目の項目の形式が正しくありません（{to_japanese(e)}）。",
             ) from e
     return [{"id": f"c{i + 1}", "name": c.name, "levels": c.levels} for i, c in enumerate(parsed)]
+
+
+async def download_and_transcribe(media_url: str, tmp_dir: str, max_mb: int) -> TranscriptionResult:
+    media_path, media_filename = await asyncio.to_thread(download_audio_from_url, media_url, tmp_dir, max_mb)
+    return await transcribe(media_path, media_filename)
 
 
 @router.get("/health")
@@ -176,26 +183,38 @@ async def create_review(
 
     tmp_dir = tempfile.mkdtemp()
     try:
-        slides = None
+        # Stage 1, all at once: slide extraction, transcription, video frame
+        # extraction and the rubric (which depends only on the user's choices).
+        stage = Stage()
+        slides_task = frames_task = transcript_task = None
         if slide_file is not None:
             slide_path = save_temp_upload(slide_file, tmp_dir)
-            slides = slide_extractor.extract_slides(slide_path, slide_file.filename)
-
-        transcript = None
-        video_frames = None
+            slides_task = stage.in_thread(slide_extractor.extract_slides, slide_path, slide_file.filename)
         if media_file is not None:
             media_path = save_temp_upload(media_file, tmp_dir)
+            transcript_task = stage.call(transcribe(media_path, media_file.filename))
             if is_video_file(media_file.filename):
-                video_frames = extract_frames_base64(media_path)
-            transcription = await transcribe(media_path, media_file.filename)
-            transcript = transcription.text
+                frames_task = stage.in_thread(extract_frames_base64, media_path)
         elif media_url:
-            media_path, media_filename = download_audio_from_url(media_url, tmp_dir, settings.max_media_mb)
-            transcription = await transcribe(media_path, media_filename)
-            transcript = transcription.text
+            # Downloads in a worker thread into tmp_dir, so it must not be cut loose.
+            transcript_task = stage.call(download_and_transcribe(media_url, tmp_dir, settings.max_media_mb), cancellable=False)
+        rubric_task = stage.call(
+            review_generator.prepare_rubric(mode, event_context, parsed_criteria_names, parsed_custom_rubric)
+        )
+        await stage.wait()
 
+        # Stage 2 (inside generate_review): body-language analysis from the
+        # frames, then Jev scoring and Claude's comments.
         review = await review_generator.generate_review(
-            slides, transcript, mode, tone, event_context, parsed_criteria_names, parsed_custom_rubric, video_frames
+            slides_task.result() if slides_task else None,
+            transcript_task.result().text if transcript_task else None,
+            mode,
+            tone,
+            event_context,
+            parsed_criteria_names,
+            parsed_custom_rubric,
+            frames_task.result() if frames_task else None,
+            rubric=rubric_task.result(),
         )
         try:
             history.save_review(review)

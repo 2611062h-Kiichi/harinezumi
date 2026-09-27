@@ -338,6 +338,26 @@ async def resolve_rubric(
     return GENERAL_RUBRIC_CRITERIA, GENERAL_INTRO_DEFAULT, "汎用ピッチ審査"
 
 
+ResolvedRubric = tuple[list[dict], str, str]  # (criteria, mode_intro, rubric_label)
+
+
+async def prepare_rubric(
+    mode: str,
+    event_context: str | None = None,
+    criteria_names: list[str] | None = None,
+    custom_criteria: list[dict] | None = None,
+) -> ResolvedRubric:
+    """Fetches or generates the rubric. It depends only on the user's choices,
+    not on the pitch, so the review endpoint runs it alongside slide
+    extraction and transcription."""
+    settings = get_settings()
+    if not settings.anthropic_api_key:
+        raise HTTPException(status_code=400, detail="ANTHROPIC_API_KEYが設定されていません。")
+    client = AsyncAnthropic(api_key=settings.anthropic_api_key)
+    event_context = event_context.strip() if event_context else None
+    return await resolve_rubric(client, settings.claude_model, mode, event_context, criteria_names, custom_criteria)
+
+
 async def generate_review(
     slides: SlideExtractionResult | None,
     transcript: str | None,
@@ -347,7 +367,10 @@ async def generate_review(
     criteria_names: list[str] | None = None,
     custom_criteria: list[dict] | None = None,
     video_frames_base64: list[str] | None = None,
+    rubric: ResolvedRubric | None = None,
 ) -> PitchReviewResponse:
+    """Reviews the pitch. Pass `rubric` if it was already prepared (see
+    prepare_rubric); otherwise it is resolved here first."""
     if slides is None and not transcript:
         raise HTTPException(status_code=400, detail="スライド資料または音声/動画のいずれかを指定してください。")
     if mode not in ("business", "general"):
@@ -360,11 +383,9 @@ async def generate_review(
         raise HTTPException(status_code=400, detail="ANTHROPIC_API_KEYが設定されていません。")
 
     client = AsyncAnthropic(api_key=settings.anthropic_api_key)
-    event_context = event_context.strip() if event_context else None
-
-    rubric_criteria, mode_intro, rubric_label = await resolve_rubric(
-        client, settings.claude_model, mode, event_context, criteria_names, custom_criteria
-    )
+    if rubric is None:
+        rubric = await prepare_rubric(mode, event_context, criteria_names, custom_criteria)
+    rubric_criteria, mode_intro, rubric_label = rubric
 
     visual_description = await describe_presentation_visuals(client, settings.claude_model, video_frames_base64 or [])
     pitch_content = build_user_prompt(slides, transcript, visual_description)
