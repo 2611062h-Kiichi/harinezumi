@@ -29,6 +29,21 @@
 ---
 
 ## 作業計画（計画役が書く・タスクごとに上書き）
+### T18 他の開発者のブランチ（本番の機能）をマージで取り込む（AC-00a, AC-00b, AC-00c, AC-00d）
+- 人間の依頼（2026-09-27）:「他の人がデプロイしている機能を確認することはできますか？その機能をここにも実装してください。」
+- 人間の決定: 取り込み方は **マージ**（履歴ごと合流。push はしない）。見た目は **こちらの明るい背景＋オレンジを維持**
+- 対象: `origin/feature/business-contest-rubric` の分岐点 b2dfe7f 以降の17コミット（最新 161f8d7、2026-09-26）
+- 衝突の見込み（`git merge-tree` で確認）: `jev_scorer.py`、`review_generator.py`、`index.css` の3ファイル。App.tsx などは自動で合流
+1. `git merge origin/feature/business-contest-rubric`（--no-ff）。衝突を解く:
+   - `jev_scorer.py`: 相手の `score_with_jev(state_text, criteria)`（評価基準を引数で受け取る）と、こちらの `run_system_one`（コンテスト観点モードが使う）を両方残す
+   - `review_generator.py`: 相手の機能（カスタム評価基準・プレビュー・動画分析）と、こちらの変更（`_call_claude` の `failure_detail`、`build_user_prompt` の公開）を両方残す
+   - `index.css`: こちらのオレンジのデザインを土台にし、相手の新しい部品（評価基準のプレビュー、判定基準の表示、Powered by など）のクラスをオレンジのデザインで書き直す。暗いテーマの色は入れない
+2. 依存関係 `av`（PyAV。動画から静止画を取り出す）を venv に入れる（requirements.txt に相手が追加済み）
+3. テスト: 既存テスト全件＋相手の機能のテストを外部API偽物で追加（評価基準3方式の分岐、プレビューAPI、動画の静止画抽出が失敗しても審査が止まらないこと）。相手のブランチにはテストが無いため
+4. 画面確認: 外部APIだけ偽物にして、ピッチ審査タブ（評価基準の選び方・プレビュー・結果の判定基準）とコンテスト観点モードをスクショ
+5. 証拠: `evals/evidence/T18/`（merge.log、pytest.log、build.log、スクショ、secret-scan.log、check_tasks.log）
+- 実 API 呼び出し・push は含まない。マージは人間の承認済み（上記の決定）
+
 ### T17 採用された提案 P7 の反映（AC-00a, AC-00b, AC-00c, AC-00d, AC-09, AC-12）
 - 人間の決定（2026-09-27）:「提案P7を採用します。実装してください。」
 1. (a) 上限: `config.py` に `max_contest_slide_pages`（60ページ）と `max_contest_slide_chars`（30,000文字。本文＋スピーカーノート）を追加（.env で変えられる）。5分前後のピッチには十分な余裕がある値。`contest_scorer.check_slide_limits()` で確かめ、超えたら「何ページ／何文字で、上限はいくつか」を含む日本語の400。`score_audio` では **Whisper で書き起こす前** に確かめる（上限超えのスライドのために書き起こし代を払わない）。ピッチ審査タブの動きは変えない

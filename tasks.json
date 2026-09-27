@@ -335,6 +335,16 @@
       ],
       "dependencies": ["T15"],
       "acceptance": ["AC-00a", "AC-00b", "AC-00c", "AC-00d", "AC-09", "AC-12"]
+    },
+    {
+      "id": "T18",
+      "task": "他の開発者のブランチ origin/feature/business-contest-rubric（本番に出ている機能）をこのブランチにマージで取り込む: 汎用モードの評価基準3方式（既定・イベント内容からAIが設計（大会名ならweb検索）・項目名を自分で指定）、審査前の評価基準プレビュー、項目カードの1〜5点の判定基準表示、動画の静止画から身振り・表情を分析、Powered by 表示、README の追記。見た目は人間の決定によりこちらの明るい背景＋オレンジを維持し、相手の新しい部品はそれに合わせる。コンテスト観点モードと既存テストを壊さない。push はしない",
+      "owner": "ai",
+      "status": "in_progress",
+      "passes": false,
+      "evidence": [],
+      "dependencies": ["T17"],
+      "acceptance": ["AC-00a", "AC-00b", "AC-00c", "AC-00d"]
     }
   ]
 }
