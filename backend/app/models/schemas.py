@@ -26,6 +26,7 @@ class CriterionScore(BaseModel):
     max_score: int = 5
     comment: str
     confidence: float | None = Field(default=None, ge=0, le=1)
+    levels: list[str]
 
 
 class ImprovementSuggestion(BaseModel):
@@ -81,3 +82,34 @@ class PitchReviewLLMOutputFallback(BaseModel):
     strengths: list[str]
     improvements: list[ImprovementSuggestion]
     one_line_verdict: str
+
+
+class GeneratedCriterion(BaseModel):
+    name: str
+    levels: list[str] = Field(min_length=5, max_length=5)
+
+
+class CustomRubricLLMOutput(BaseModel):
+    """Schema requested from Claude to design a rubric tailored to a
+    user-described event, used for the general mode's optional event_context."""
+
+    criteria: list[GeneratedCriterion] = Field(min_length=5, max_length=9)
+
+
+class GeneratedLevelsOutput(BaseModel):
+    """Schema requested from Claude to write levels for user-supplied
+    criterion names (3-10 of them — see MIN/MAX_CRITERIA_NAMES in
+    routers/review.py), so no fixed 5-9 count constraint applies here."""
+
+    criteria: list[GeneratedCriterion] = Field(min_length=1, max_length=10)
+
+
+class RubricCriterionPreview(BaseModel):
+    id: str
+    name: str
+    levels: list[str]
+
+
+class RubricPreviewResponse(BaseModel):
+    rubric_mode_label: str
+    criteria: list[RubricCriterionPreview]

@@ -340,9 +340,22 @@
       "id": "T18",
       "task": "他の開発者のブランチ origin/feature/business-contest-rubric（本番に出ている機能）をこのブランチにマージで取り込む: 汎用モードの評価基準3方式（既定・イベント内容からAIが設計（大会名ならweb検索）・項目名を自分で指定）、審査前の評価基準プレビュー、項目カードの1〜5点の判定基準表示、動画の静止画から身振り・表情を分析、Powered by 表示、README の追記。見た目は人間の決定によりこちらの明るい背景＋オレンジを維持し、相手の新しい部品はそれに合わせる。コンテスト観点モードと既存テストを壊さない。push はしない",
       "owner": "ai",
-      "status": "in_progress",
+      "status": "review",
       "passes": false,
-      "evidence": [],
+      "evidence": [
+        "evals/evidence/T18/merge.log",
+        "evals/evidence/T18/pytest.log",
+        "evals/evidence/T18/build.log",
+        "evals/evidence/T18/screenshot-01-review-form-preview.png",
+        "evals/evidence/T18/screenshot-02-review-result-levels.png",
+        "evals/evidence/T18/screenshot-03-contest-mode.png",
+        "evals/evidence/T18/secret-scan.log",
+        "evals/evidence/T18/check_tasks.log",
+        "backend/app/services/jev_scorer.py",
+        "backend/app/services/review_generator.py",
+        "backend/tests/test_merged_review_features.py",
+        "frontend/src/index.css"
+      ],
       "dependencies": ["T17"],
       "acceptance": ["AC-00a", "AC-00b", "AC-00c", "AC-00d"]
     }

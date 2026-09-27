@@ -12,7 +12,7 @@ import httpx2
 import pytest
 from fastapi import HTTPException
 
-from app.rubric import DEFAULT_MODE
+from app.rubric import DEFAULT_MODE, get_rubric_criteria
 from app.services import jev_scorer
 from tests.conftest import NetworkAccessBlocked
 
@@ -53,7 +53,7 @@ def test_unmocked_jev_call_never_leaves_the_machine():
     # Without the fake client this must fail as a connection error, not an
     # authentication error (which would mean the request reached TypeSafe).
     with pytest.raises(HTTPException) as excinfo:
-        asyncio.run(jev_scorer.score_with_jev("text", DEFAULT_MODE))
+        asyncio.run(jev_scorer.score_with_jev("text", get_rubric_criteria(DEFAULT_MODE)))
 
     assert excinfo.value.status_code == 502
     assert "接続に失敗" in excinfo.value.detail

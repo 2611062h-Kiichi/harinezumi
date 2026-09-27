@@ -5,6 +5,7 @@ export interface CriterionScore {
   max_score: number;
   comment: string;
   confidence: number | null;
+  levels: string[];
 }
 
 export interface ImprovementSuggestion {
@@ -28,4 +29,19 @@ export interface PitchReviewResponse {
 }
 
 export type RubricMode = "business" | "general";
-export type FeedbackTone = "mild" | "normal" | "spicy";
+
+export interface RubricCriterionPreview {
+  id: string;
+  name: string;
+  levels: string[];
+}
+
+export interface RubricPreviewResponse {
+  rubric_mode_label: string;
+  criteria: RubricCriterionPreview[];
+}
+
+export interface CustomRubricCriterion {
+  name: string;
+  levels: string[];
+}

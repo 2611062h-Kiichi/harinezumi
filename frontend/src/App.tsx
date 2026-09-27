@@ -4,7 +4,7 @@ import { LoadingState } from "./components/LoadingState";
 import { ReviewResult } from "./components/ReviewResult";
 import { ContestQuestionsPage } from "./components/contest/ContestQuestionsPage";
 import { submitPitchReview, ReviewApiError } from "./api/reviewApi";
-import type { FeedbackTone, PitchReviewResponse, RubricMode } from "./types/review";
+import type { CustomRubricCriterion, PitchReviewResponse, RubricMode } from "./types/review";
 
 type Status = "idle" | "submitting" | "success" | "error";
 type AppMode = "review" | "contest";
@@ -20,12 +20,22 @@ export default function App() {
     mediaFile: File | null,
     mediaUrl: string | null,
     mode: RubricMode,
-    tone: FeedbackTone,
+    eventContext: string | null,
+    criteriaNames: string[] | null,
+    customRubric: CustomRubricCriterion[] | null,
   ) {
     setStatus("submitting");
     setErrorMessage(null);
     try {
-      const result = await submitPitchReview(slideFile, mediaFile, mediaUrl, mode, tone);
+      const result = await submitPitchReview(
+        slideFile,
+        mediaFile,
+        mediaUrl,
+        mode,
+        eventContext,
+        criteriaNames,
+        customRubric,
+      );
       setReview(result);
       setStatus("success");
     } catch (err) {

@@ -195,6 +195,6 @@ def get_rubric_label(mode: str) -> str:
     return RUBRIC_MODES[mode]["label"]
 
 
-def compute_overall_score(criterion_scores: list[float], mode: str) -> int:
-    max_total = len(get_rubric_criteria(mode)) * SCALE_MAX
+def compute_overall_score(criterion_scores: list[float]) -> int:
+    max_total = len(criterion_scores) * SCALE_MAX
     return round(sum(criterion_scores) / max_total * 100)

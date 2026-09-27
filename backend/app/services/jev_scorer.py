@@ -6,7 +6,7 @@ from fastapi import HTTPException
 from typesafe_sdk import AsyncTypeSafeClient, Score, SystemOneResponse
 
 from app.config import get_settings
-from app.rubric import SCALE_MIN, get_rubric_criteria
+from app.rubric import SCALE_MIN
 
 logger = logging.getLogger(__name__)
 
@@ -43,11 +43,11 @@ async def run_system_one(state: str, questions: dict[str, Score]) -> SystemOneRe
         raise HTTPException(status_code=502, detail=f"Jev(TypeSafe API)エラー: {e}") from e
 
 
-async def score_with_jev(state_text: str, mode: str) -> dict[str, JevCriterionScore]:
-    """Scores every rubric criterion for `mode` against `state_text` in a single
+async def score_with_jev(state_text: str, criteria: list[dict]) -> dict[str, JevCriterionScore]:
+    """Scores every given rubric criterion against `state_text` in a single
     parallel Jev request, returning a continuous 1-5 score and confidence per
-    criterion id."""
-    criteria = get_rubric_criteria(mode)
+    criterion id. `criteria` may be a static rubric or one generated on the
+    fly for a user-described event."""
     questions = {
         c["id"]: Score(instructions=c["name"], criteria=c["levels"])
         for c in criteria

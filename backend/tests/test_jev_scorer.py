@@ -45,7 +45,7 @@ def fake_jev(monkeypatch):
 
 
 def test_sends_pitch_text_and_score_questions_to_jev(fake_jev):
-    result = asyncio.run(jev_scorer.score_with_jev("発表の書き起こしテキスト", DEFAULT_MODE))
+    result = asyncio.run(jev_scorer.score_with_jev("発表の書き起こしテキスト", get_rubric_criteria(DEFAULT_MODE)))
 
     assert len(fake_jev.calls) == 1
     call = fake_jev.calls[0]
@@ -70,7 +70,7 @@ def test_missing_typesafe_key_is_a_clear_error(fake_jev, monkeypatch):
     jev_scorer.get_settings.cache_clear()
 
     with pytest.raises(HTTPException) as excinfo:
-        asyncio.run(jev_scorer.score_with_jev("text", DEFAULT_MODE))
+        asyncio.run(jev_scorer.score_with_jev("text", get_rubric_criteria(DEFAULT_MODE)))
 
     assert excinfo.value.status_code == 400
     assert "TYPESAFE_API_KEY" in excinfo.value.detail
@@ -83,7 +83,7 @@ def test_authentication_error_becomes_japanese_400(fake_jev):
     )
 
     with pytest.raises(HTTPException) as excinfo:
-        asyncio.run(jev_scorer.score_with_jev("text", DEFAULT_MODE))
+        asyncio.run(jev_scorer.score_with_jev("text", get_rubric_criteria(DEFAULT_MODE)))
 
     assert excinfo.value.status_code == 400
     assert excinfo.value.detail == "TYPESAFE_API_KEYが正しくありません。"

@@ -1,4 +1,4 @@
-import type { FeedbackTone, PitchReviewResponse, RubricMode } from "../types/review";
+import type { CustomRubricCriterion, PitchReviewResponse, RubricMode, RubricPreviewResponse } from "../types/review";
 
 const REQUEST_TIMEOUT_MS = 5 * 60 * 1000;
 
@@ -10,19 +10,53 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "";
 
 export class ReviewApiError extends Error {}
 
+export async function fetchRubricPreview(
+  mode: RubricMode,
+  eventContext?: string | null,
+  criteriaNames?: string[] | null,
+): Promise<RubricPreviewResponse> {
+  const formData = new FormData();
+  formData.append("mode", mode);
+  if (criteriaNames && criteriaNames.length > 0) {
+    formData.append("criteria_names", criteriaNames.join("\n"));
+  } else if (eventContext) {
+    formData.append("event_context", eventContext);
+  }
+
+  const response = await fetch(`${API_BASE_URL}/api/rubric/preview`, {
+    method: "POST",
+    body: formData,
+  });
+
+  if (!response.ok) {
+    const body = await response.json().catch(() => null);
+    throw new ReviewApiError(body?.detail ?? `評価基準の取得に失敗しました (HTTP ${response.status})`);
+  }
+
+  return (await response.json()) as RubricPreviewResponse;
+}
+
 export async function submitPitchReview(
   slideFile: File | null | undefined,
   mediaFile: File | null | undefined,
   mediaUrl: string | null | undefined,
   mode: RubricMode,
-  tone: FeedbackTone,
+  eventContext?: string | null,
+  criteriaNames?: string[] | null,
+  customRubric?: CustomRubricCriterion[] | null,
 ): Promise<PitchReviewResponse> {
   const formData = new FormData();
   if (slideFile) {
     formData.append("slide_file", slideFile);
   }
   formData.append("mode", mode);
-  formData.append("tone", tone);
+  if (customRubric && customRubric.length > 0) {
+    formData.append("custom_rubric_json", JSON.stringify(customRubric));
+  } else if (criteriaNames && criteriaNames.length > 0) {
+    formData.append("criteria_names", criteriaNames.join("\n"));
+  } else if (eventContext) {
+    formData.append("event_context", eventContext);
+  }
   if (mediaFile) {
     formData.append("media_file", mediaFile);
   } else if (mediaUrl) {

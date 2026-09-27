@@ -511,3 +511,127 @@ button:disabled {
   font-weight: 400;
   color: var(--text-muted);
 }
+
+/* ---- Merged from feature/business-contest-rubric (T18), restyled to this theme ---- */
+
+.powered-by {
+  margin: 0 0 16px;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.powered-by-name {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.rubric-preview {
+  margin-top: 16px;
+  padding: 16px;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+}
+
+.rubric-preview-label {
+  margin: 0 0 10px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.rubric-preview-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.rubric-preview-list summary,
+.criterion-levels summary {
+  cursor: pointer;
+  font-weight: 600;
+  user-select: none;
+  border-radius: var(--radius-sm);
+  transition: color var(--transition-fast);
+}
+
+.rubric-preview-list summary {
+  font-size: 0.92rem;
+}
+
+.criterion-levels summary {
+  font-size: 0.82rem;
+  color: var(--accent);
+}
+
+.rubric-preview-list summary:hover,
+.criterion-levels summary:hover {
+  color: var(--accent-dark);
+}
+
+.rubric-preview-list summary:focus-visible,
+.criterion-levels summary:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.rubric-preview-list summary input {
+  width: calc(100% - 20px);
+  font: inherit;
+  color: var(--text);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 4px 8px;
+}
+
+.rubric-preview-list summary input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.rubric-preview-list ol,
+.criterion-levels ol {
+  margin: 8px 0 0;
+  padding-left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.rubric-preview-list li,
+.criterion-levels li {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+
+.criterion-levels {
+  margin-top: 10px;
+}
+
+.criterion-level-num {
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.criterion-level-achieved {
+  color: var(--text);
+  background: var(--accent-light);
+  border-radius: var(--radius-sm);
+  padding: 4px 8px;
+  margin-left: -8px;
+}
+
+.criterion-level-achieved .criterion-level-num {
+  color: var(--accent-dark);
+}
+
+/* The preview sits inside .field, whose `span` rule would put each score label on its own line. */
+.rubric-preview .criterion-level-num {
+  display: inline;
+  margin-bottom: 0;
+}
