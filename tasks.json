@@ -392,6 +392,27 @@
       ],
       "dependencies": ["T18"],
       "acceptance": ["AC-00a", "AC-00b", "AC-00c", "AC-00d", "AC-09"]
+    },
+    {
+      "id": "T20",
+      "task": "コンテスト観点モードの採点でも、動画（.mp4 / .webm）を送ったときは映像を分析する: 動画から静止画を取り出し、Claude が表情・姿勢・身振り手振り・アイコンタクトを説明し、その説明をスライド・書き起こしと一緒に Jev に渡す（ピッチ審査タブと同じ仕組みを使う）。音声だけのときは従来どおり書き起こしをそのまま渡す。映像の分析に失敗したり ANTHROPIC_API_KEY が無いときは映像なしで採点を続ける。書き起こしが空などで採点できないときは映像の分析（有料）をしない。結果画面に、映像を使ったかと映像から読み取った様子を表示する",
+      "owner": "ai",
+      "status": "review",
+      "passes": false,
+      "evidence": [
+        "evals/evidence/T20/pytest.log",
+        "evals/evidence/T20/before-fix.log",
+        "evals/evidence/T20/build.log",
+        "evals/evidence/T20/jev-state-from-ui.log",
+        "evals/evidence/T20/screenshot-01-form-video.png",
+        "evals/evidence/T20/screenshot-02-result-with-video.png",
+        "evals/evidence/T20/secret-scan.log",
+        "evals/evidence/T20/check_tasks.log",
+        "backend/app/services/contest_scorer.py",
+        "backend/tests/test_contest_video.py"
+      ],
+      "dependencies": ["T15", "T18"],
+      "acceptance": ["AC-00a", "AC-00b", "AC-00c", "AC-00d", "AC-08", "AC-09", "AC-12"]
     }
   ]
 }

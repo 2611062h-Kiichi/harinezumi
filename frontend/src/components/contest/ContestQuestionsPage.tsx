@@ -20,10 +20,16 @@ type Status =
 
 const GENERATING_STAGES = ["Questionを生成中…"];
 
+// Same extensions as backend/app/services/video_frames.py VIDEO_EXTS.
+function isVideoFile(name: string): boolean {
+  return /\.(mp4|webm)$/i.test(name);
+}
+
 function scoringStages(mediaFile: File | null, slideFile: File | null): string[] {
   const stages: string[] = [];
   if (slideFile) stages.push("スライドを読み取り中…");
   if (mediaFile) stages.push("音声を文字起こし中…");
+  if (mediaFile && isVideoFile(mediaFile.name)) stages.push("映像から身振り・表情を分析中…");
   stages.push("Jevが採点中…");
   return stages;
 }

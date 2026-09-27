@@ -1,0 +1,16 @@
+$ cd backend && PYTHONIOENCODING=utf-8 .venv/Scripts/python -m pytest -q -p no:cacheprovider -rfE tests/test_contest_video.py   # 修正前のアプリのコード（git stash で一時的に戻した状態）
+FAILED tests/test_contest_video.py::test_jev_state_is_the_transcript_itself_without_slides_or_video
+ERROR tests/test_contest_video.py::test_video_frames_are_described_and_sent_to_jev[pitch.mp4]
+ERROR tests/test_contest_video.py::test_video_frames_are_described_and_sent_to_jev[pitch.webm]
+ERROR tests/test_contest_video.py::test_video_with_slides_sends_slides_transcript_and_visuals
+ERROR tests/test_contest_video.py::test_audio_only_is_unchanged_and_never_touches_video[pitch.mp3]
+ERROR tests/test_contest_video.py::test_audio_only_is_unchanged_and_never_touches_video[pitch.m4a]
+ERROR tests/test_contest_video.py::test_audio_only_is_unchanged_and_never_touches_video[pitch.wav]
+ERROR tests/test_contest_video.py::test_failed_visual_description_still_scores_without_it
+ERROR tests/test_contest_video.py::test_video_without_usable_frames_scores_without_calling_claude
+ERROR tests/test_contest_video.py::test_missing_anthropic_key_skips_visual_analysis
+ERROR tests/test_contest_video.py::test_blank_transcript_is_rejected_before_paying_for_visual_analysis
+ERROR tests/test_contest_video.py::test_oversized_slides_are_rejected_before_whisper_or_video
+ERROR tests/test_contest_video.py::test_api_mp4_upload_uses_video_and_cleans_up
+ERROR tests/test_contest_video.py::test_api_mp3_upload_reports_no_video - Att...
+1 failed, 13 errors in 2.38s

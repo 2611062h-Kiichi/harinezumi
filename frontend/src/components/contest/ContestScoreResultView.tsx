@@ -7,9 +7,13 @@ interface Props {
 }
 
 function sourceLabel(result: ContestScoreResult): string {
-  if (result.slides_included && result.transcript_included) return "スライド資料と発表の音声で採点しました。";
-  if (result.slides_included) return "スライド資料だけで採点しました（発表の音声なし）。";
-  return "発表の音声で採点しました（スライド資料なし）。";
+  const used: string[] = [];
+  if (result.slides_included) used.push("スライド資料");
+  if (result.transcript_included) used.push("発表の音声");
+  if (result.visual_included) used.push("映像（身振り・表情）");
+  if (used.length === 1 && result.slides_included) return "スライド資料だけで採点しました（発表の音声なし）。";
+  if (used.length === 1) return "発表の音声で採点しました（スライド資料なし）。";
+  return `${used.join(used.length > 2 ? "・" : "と")}で採点しました。`;
 }
 
 export function ContestScoreResultView({ result, onScoreAgain, onReset }: Props) {
@@ -48,6 +52,14 @@ export function ContestScoreResultView({ result, onScoreAgain, onReset }: Props)
           ))}
         </div>
       </section>
+
+      {result.visual_description && (
+        <section className="list-section">
+          <h2>映像から読み取った様子</h2>
+          <p className="visual-description">{result.visual_description}</p>
+          <p className="note">動画から取り出した数枚の静止画だけをもとにしたAIの説明です。採点の材料の一つとして使いました。</p>
+        </section>
+      )}
 
       <button onClick={onScoreAgain}>もう一度採点する</button>
       <button className="secondary-button" onClick={onReset}>

@@ -8,6 +8,7 @@ import logging
 from datetime import datetime, timezone
 from decimal import ROUND_HALF_UP, Decimal
 
+from anthropic import AsyncAnthropic
 from fastapi import HTTPException
 from typesafe_sdk import Score
 
@@ -20,8 +21,9 @@ from app.models.contest import (
 )
 from app.models.schemas import SlideExtractionResult
 from app.services.jev_scorer import run_system_one
-from app.services.review_generator import build_user_prompt
+from app.services.review_generator import build_user_prompt, describe_presentation_visuals
 from app.services.transcription import transcribe
+from app.services.video_frames import extract_frames_base64, is_video_file
 
 logger = logging.getLogger(__name__)
 
@@ -54,13 +56,17 @@ def to_points(jev_score: float, level_count: int, max_points: int) -> float:
     return round_half_up(Decimal(str(jev_score)) / (level_count - 1) * max_points)
 
 
-def build_jev_state(slides: SlideExtractionResult | None, transcript: str | None) -> str:
+def build_jev_state(
+    slides: SlideExtractionResult | None,
+    transcript: str | None,
+    visual_description: str | None = None,
+) -> str:
     # Transcript only: pass it through unchanged, exactly as before slides were
-    # supported. With slides: the same slide + transcript layout the pitch-review
-    # mode already sends to Jev.
-    if slides is None:
+    # supported. With slides or video: the same layout the pitch-review mode
+    # already sends to Jev.
+    if slides is None and visual_description is None:
         return transcript or ""
-    return build_user_prompt(slides, transcript)
+    return build_user_prompt(slides, transcript, visual_description)
 
 
 def _has_slide_text(slides: SlideExtractionResult) -> bool:
@@ -94,8 +100,10 @@ async def score_materials(
     question_set: QuestionSet,
     slides: SlideExtractionResult | None = None,
     transcript: str | None = None,
+    visual_description: str | None = None,
 ) -> ContestScoreResult:
-    """Scores a pitch from its slides, its transcript, or both."""
+    """Scores a pitch from its slides, its transcript, or both (plus, for a
+    video, a description of the speaker's non-verbal delivery)."""
     if slides is None and transcript is None:
         raise HTTPException(status_code=400, detail="スライド資料、または発表の音声・動画を指定してください。")
     if slides is not None:
@@ -115,7 +123,7 @@ async def score_materials(
         )
 
     questions = build_jev_questions(question_set)
-    response = await run_system_one(build_jev_state(slides, transcript), questions)
+    response = await run_system_one(build_jev_state(slides, transcript, visual_description), questions)
 
     levels_by_id = {q.criterion_id: q.levels for q in question_set.questions}
     results = []
@@ -163,6 +171,8 @@ async def score_materials(
         generated_at=datetime.now(timezone.utc),
         slides_included=slides is not None,
         transcript_included=transcript is not None,
+        visual_included=visual_description is not None,
+        visual_description=visual_description,
     )
 
 
@@ -181,4 +191,25 @@ async def score_audio(
         # Before transcription, so an oversized deck doesn't cost a Whisper call.
         check_slide_limits(slides)
     transcription = await transcribe(audio_path, filename)
-    return await score_materials(question_set, slides=slides, transcript=transcription.text)
+    visual_description = None
+    if transcription.text.strip() and is_video_file(filename):
+        # Only once scoring can go ahead: describing frames is a paid Claude call.
+        visual_description = await describe_video(audio_path)
+    return await score_materials(
+        question_set, slides=slides, transcript=transcription.text, visual_description=visual_description
+    )
+
+
+async def describe_video(video_path: str) -> str | None:
+    """Best-effort description of the speaker's non-verbal delivery, as in the
+    pitch-review mode. None (score without it) if there's no Claude key, no
+    usable frames, or the Claude call fails."""
+    settings = get_settings()
+    if not settings.anthropic_api_key:
+        logger.warning("ANTHROPIC_API_KEY not set; scoring the video without visual analysis")
+        return None
+    frames = extract_frames_base64(video_path)
+    if not frames:
+        return None
+    client = AsyncAnthropic(api_key=settings.anthropic_api_key)
+    return await describe_presentation_visuals(client, settings.claude_model, frames)

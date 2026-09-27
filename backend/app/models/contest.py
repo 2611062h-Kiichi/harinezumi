@@ -112,6 +112,9 @@ class ContestScoreResult(BaseModel):
     # What the score was based on; the scorer always sets both explicitly.
     slides_included: bool = False
     transcript_included: bool = True
+    # Set when a video's frames were described by Claude and sent to Jev.
+    visual_included: bool = False
+    visual_description: str | None = None
 
 
 class SavedQuestionSet(BaseModel):

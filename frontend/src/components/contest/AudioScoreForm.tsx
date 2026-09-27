@@ -68,6 +68,9 @@ export function AudioScoreForm({ questionSet, errorMessage, onSubmit, onBack }: 
         スライドは文字（スピーカーノート・表・グループ化した図形の中の文字を含む）だけを読み取ります。図や画像の中の文字は読み取れません。
         スライドは{MAX_SLIDE_PAGES}ページ・{MAX_SLIDE_CHARS.toLocaleString()}文字（ノートを含む）までです。
       </p>
+      <p className="note">
+        動画（mp4 / webm）を選ぶと、静止画数枚から表情・姿勢・身振り手振りもAIが読み取り、採点の材料にします。
+      </p>
 
       {(localError || errorMessage) && <p className="error-text">{localError ?? errorMessage}</p>}
 

@@ -47,6 +47,8 @@ export interface ContestScoreResult {
   generated_at: string;
   slides_included: boolean;
   transcript_included: boolean;
+  visual_included: boolean;
+  visual_description: string | null;
 }
 
 export interface SavedQuestionSet {

@@ -635,3 +635,13 @@ button:disabled {
   display: inline;
   margin-bottom: 0;
 }
+
+.visual-description {
+  margin: 0 0 6px;
+  padding: 12px 14px;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  line-height: 1.7;
+  white-space: pre-wrap;
+}
