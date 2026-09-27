@@ -70,3 +70,11 @@ def dummy_settings(monkeypatch):
     get_settings.cache_clear()
     yield
     get_settings.cache_clear()
+
+
+@pytest.fixture(autouse=True)
+def isolated_review_history(tmp_path, monkeypatch):
+    # /api/review saves each review; keep test reviews out of backend/data/reviews.
+    from app.services import history
+
+    monkeypatch.setattr(history, "DATA_DIR", str(tmp_path / "reviews"))
