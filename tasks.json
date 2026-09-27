@@ -213,9 +213,16 @@
       "id": "T11",
       "task": "【人間の承認が必要】実際の Anthropic / OpenAI / TypeSafe API とサンプル音声で1回通しの動作確認をする",
       "owner": "ai",
-      "status": "todo",
+      "status": "review",
       "passes": false,
-      "evidence": [],
+      "evidence": [
+        "evals/evidence/T11/e2e.log",
+        "evals/evidence/T11/screenshot-01-generated-questions.png",
+        "evals/evidence/T11/screenshot-02-score-result.png",
+        "evals/evidence/T11/pytest.log",
+        "evals/evidence/T11/secret-scan.log",
+        "evals/evidence/T11/check_tasks.log"
+      ],
       "dependencies": ["T10"],
       "acceptance": ["AC-00a", "AC-00c", "AC-00d", "AC-13"]
     },
